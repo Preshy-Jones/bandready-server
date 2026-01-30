@@ -1,0 +1,10 @@
+.env
+*.env.local
+/tmp/
+/dist/
+/bin/
+bandready-server
+*.test
+coverage.out
+*.log
+.DS_Store
