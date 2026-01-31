@@ -1,0 +1,147 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  passwordHash          String?   @map("password_hash")
+  fullName              String?   @map("full_name")
+  googleId              String?   @unique @map("google_id")
+  avatarUrl             String?   @map("avatar_url")
+  targetBandScore       Decimal   @default(7.0) @map("target_band_score") @db.Decimal(2, 1)
+  targetExamDate        DateTime? @map("target_exam_date")
+  nativeLanguage        String?   @map("native_language")
+  country               String?
+  subscriptionTier      String    @default("free") @map("subscription_tier")
+  subscriptionExpiresAt DateTime? @map("subscription_expires_at")
+  paystackCustomerCode  String?   @map("paystack_customer_code")
+  dailySessionsUsed     Int       @default(0) @map("daily_sessions_used")
+  dailySessionsResetAt  DateTime  @default(now()) @map("daily_sessions_reset_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  practiceSessions PracticeSession[]
+  progress         UserProgress?
+
+  @@map("users")
+}
+
+model SpeakingQuestion {
+  id               String   @id @default(uuid())
+  part             Int
+  topic            String   @db.VarChar(100)
+  questionText     String   @map("question_text")
+  cueCardPoints    Json?    @map("cue_card_points")
+  relatedPart2Topic String?  @map("related_part2_topic") @db.VarChar(100)
+  difficultyLevel  String   @default("medium") @map("difficulty_level") @db.VarChar(20)
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  practiceSessions PracticeSession[]
+
+  @@index([part, topic])
+  @@map("speaking_questions")
+}
+
+model PracticeSession {
+  id                      String    @id @default(uuid())
+  userId                  String    @map("user_id")
+  questionId              String    @map("question_id")
+  part                    Int
+  
+  // Audio data
+  audioUrl                String?   @map("audio_url")
+  audioDurationSeconds    Decimal?  @map("audio_duration_seconds") @db.Decimal(6, 2)
+  
+  // Transcription
+  transcript              String?
+  transcriptWithTimestamps Json?    @map("transcript_with_timestamps")
+  
+  // AI Analysis Results
+  overallBandScore        Decimal?  @map("overall_band_score") @db.Decimal(2, 1)
+  fluencyCoherenceScore   Decimal?  @map("fluency_coherence_score") @db.Decimal(2, 1)
+  lexicalResourceScore    Decimal?  @map("lexical_resource_score") @db.Decimal(2, 1)
+  grammarAccuracyScore    Decimal?  @map("grammar_accuracy_score") @db.Decimal(2, 1)
+  pronunciationScore      Decimal?  @map("pronunciation_score") @db.Decimal(2, 1)
+  
+  // Detailed metrics
+  wordsPerMinute          Decimal?  @map("words_per_minute") @db.Decimal(5, 2)
+  totalWords              Int?      @map("total_words")
+  fillerWordCount         Int?      @map("filler_word_count")
+  fillerWordsDetail       Json?     @map("filler_words_detail")
+  pauseCount              Int?      @map("pause_count")
+  longPauseCount          Int?      @map("long_pause_count")
+  pauseLocations          Json?     @map("pause_locations")
+  
+  // AI Feedback
+  feedbackFluency         String?   @map("feedback_fluency")
+  feedbackVocabulary      String?   @map("feedback_vocabulary")
+  feedbackGrammar         String?   @map("feedback_grammar")
+  feedbackPronunciation   String?   @map("feedback_pronunciation")
+  feedbackOverall         String?   @map("feedback_overall")
+  
+  // Suggestions
+  vocabularySuggestions   Json?     @map("vocabulary_suggestions")
+  grammarCorrections      Json?     @map("grammar_corrections")
+  mispronouncedWords      Json?     @map("mispronounced_words")
+  
+  // Model answer comparison
+  modelAnswer             String?   @map("model_answer")
+  
+  // Session metadata
+  prepTimeUsedSeconds     Int?      @map("prep_time_used_seconds")
+  speakingTimeSeconds     Decimal?  @map("speaking_time_seconds") @db.Decimal(6, 2)
+  completedAt             DateTime? @map("completed_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question SpeakingQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([part])
+  @@index([overallBandScore])
+  @@map("practice_sessions")
+}
+
+model UserProgress {
+  id                 String    @id @default(uuid())
+  userId             String    @unique @map("user_id")
+  
+  // Rolling averages (last 10 sessions)
+  avgOverallScore    Decimal?  @map("avg_overall_score") @db.Decimal(3, 2)
+  avgFluencyScore    Decimal?  @map("avg_fluency_score") @db.Decimal(3, 2)
+  avgLexicalScore    Decimal?  @map("avg_lexical_score") @db.Decimal(3, 2)
+  avgGrammarScore    Decimal?  @map("avg_grammar_score") @db.Decimal(3, 2)
+  avgPronunciationScore Decimal? @map("avg_pronunciation_score") @db.Decimal(3, 2)
+  
+  // Totals
+  totalSessions      Int       @default(0) @map("total_sessions")
+  totalPracticeMinutes Decimal @default(0) @map("total_practice_minutes") @db.Decimal(8, 2)
+  
+  // Streaks
+  currentStreakDays  Int       @default(0) @map("current_streak_days")
+  longestStreakDays  Int       @default(0) @map("longest_streak_days")
+  lastPracticeDate   DateTime? @map("last_practice_date")
+  
+  // Weak areas identified by AI
+  weakAreas          Json?     @map("weak_areas")
+  strongAreas        Json?     @map("strong_areas")
+  
+  // Part-specific progress
+  part1AvgScore      Decimal?  @map("part1_avg_score") @db.Decimal(3, 2)
+  part2AvgScore      Decimal?  @map("part2_avg_score") @db.Decimal(3, 2)
+  part3AvgScore      Decimal?  @map("part3_avg_score") @db.Decimal(3, 2)
+  
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_progress")
+}
