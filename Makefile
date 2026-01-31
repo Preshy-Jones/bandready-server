@@ -38,3 +38,5 @@ docker-up:
 
 docker-down:
 	docker-compose down
+
+# seed target added
