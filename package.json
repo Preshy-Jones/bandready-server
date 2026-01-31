@@ -2,6 +2,9 @@
   "name": "ielts-speaking-api",
   "version": "1.0.0",
   "description": "IELTS Speaking Practice API with AI Assessment",
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
