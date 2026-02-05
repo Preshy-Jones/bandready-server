@@ -114,7 +114,12 @@ Analyze this response and provide your assessment in the following JSON format:
 }
 \`\`\`
 
-IMPORTANT: Return ONLY the JSON, no additional text.`;
+CRITICAL REQUIREMENTS:
+1. Return ONLY valid JSON wrapped in markdown code blocks
+2. Ensure all strings are properly escaped (use \\" for quotes inside strings)
+3. Do not include any trailing commas
+4. Complete the entire JSON structure - do not truncate
+5. No additional text before or after the JSON`;
 
   return prompt;
 }

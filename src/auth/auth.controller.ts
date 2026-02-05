@@ -1,8 +1,8 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Res, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
+import { AuthService, RegisterDto, LoginDto } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -10,6 +10,17 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
+
+  @Post('register')
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
+  }
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
@@ -27,7 +38,9 @@ export class AuthController {
     const tokens = await this.authService.generateTokens(user.id, user.email);
     
     // Redirect to frontend with token
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    
+    console.log(`[Auth] Redirecting to frontend: ${frontendUrl}`);
     
     // Check if user needs onboarding (no target band score set beyond default)
     const needsOnboarding = !user.nativeLanguage;

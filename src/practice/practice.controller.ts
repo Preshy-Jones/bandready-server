@@ -71,18 +71,22 @@ export class PracticeController {
   async submitSession(
     @CurrentUser() user: User,
     @UploadedFile() audioFile: Express.Multer.File,
-    @Body() dto: { sessionId: string; prepTimeUsed?: number; speakingTime?: number },
+    @Body() dto: { sessionId: string; prepTimeUsed?: string; speakingTime?: string },
   ) {
     if (!audioFile) {
       throw new BadRequestException('Audio file is required');
     }
 
+    // Multipart form data sends all fields as strings, so parse to numbers
+    const prepTimeUsed = dto.prepTimeUsed ? Number(dto.prepTimeUsed) : undefined;
+    const speakingTime = dto.speakingTime ? Number(dto.speakingTime) : undefined;
+
     return this.practiceService.processSession(
       dto.sessionId,
       user.id,
       audioFile.buffer,
-      dto.prepTimeUsed,
-      dto.speakingTime,
+      prepTimeUsed,
+      speakingTime,
     );
   }
 
@@ -143,11 +147,31 @@ export class PracticeController {
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
   ) {
-    // Check if user is premium
-    if (user.subscriptionTier !== 'premium') {
+    // DEV_MODE bypasses premium check
+    const isDevMode = process.env.DEV_MODE === 'true';
+
+    // Check if user is premium (skip in DEV_MODE)
+    if (!isDevMode && user.subscriptionTier !== 'premium') {
       throw new ForbiddenException('Model answers are a premium feature');
     }
 
     return this.practiceService.generateModelAnswer(sessionId, user.id);
+  }
+
+  @Get('session/:sessionId/enhanced-model-answer')
+  @UseGuards(AuthGuard('jwt'))
+  async getEnhancedModelAnswer(
+    @CurrentUser() user: User,
+    @Param('sessionId') sessionId: string,
+  ) {
+    // DEV_MODE bypasses premium check
+    const isDevMode = process.env.DEV_MODE === 'true';
+
+    // Check if user is premium (skip in DEV_MODE)
+    if (!isDevMode && user.subscriptionTier !== 'premium') {
+      throw new ForbiddenException('Enhanced model answers are a premium feature');
+    }
+
+    return this.practiceService.generateEnhancedModelAnswer(sessionId, user.id);
   }
 }

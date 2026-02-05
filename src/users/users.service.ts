@@ -25,6 +25,20 @@ export class UsersService {
     });
   }
 
+  async createWithPassword(data: {
+    email: string;
+    fullName: string;
+    passwordHash: string;
+  }) {
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        fullName: data.fullName,
+        passwordHash: data.passwordHash,
+      },
+    });
+  }
+
   async createFromGoogle(googleUser: GoogleUser) {
     return this.prisma.user.create({
       data: {
@@ -108,6 +122,9 @@ export class UsersService {
   }
 
   async canStartSession(userId: string): Promise<boolean> {
+    // DEV_MODE bypasses all restrictions
+    if (process.env.DEV_MODE === 'true') return true;
+    
     const user = await this.resetDailySessionCount(userId);
     
     if (!user) return false;

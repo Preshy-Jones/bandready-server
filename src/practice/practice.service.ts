@@ -96,17 +96,22 @@ export class PracticeService {
       throw new BadRequestException('Session not found');
     }
 
-    // Upload audio to S3
-    const audioKey = await this.s3Service.uploadAudio(audioBuffer, userId, sessionId);
-    const audioUrl = await this.s3Service.getSignedUrl(audioKey);
+    // Upload audio to S3 (skip if S3 not configured)
+    let audioKey: string | null = null;
+    try {
+      audioKey = await this.s3Service.uploadAudio(audioBuffer, userId, sessionId);
+    } catch (error) {
+      console.warn('S3 upload failed (S3 may not be configured):', error.message);
+      // Continue without audio storage in dev mode
+    }
 
-    // Transcribe audio
+    // Transcribe audio using OpenAI Whisper
     const transcription = await this.speechAnalysis.transcribeAudio(audioBuffer);
     
-    // Calculate metrics
+    // Calculate metrics from transcription
     const audioMetrics = this.speechAnalysis.calculateAudioMetrics(transcription);
 
-    // Get AI assessment
+    // Get AI assessment using Claude
     const assessment = await this.speechAnalysis.assessSpeech({
       part: session.part as 1 | 2 | 3,
       question: session.question.questionText,
@@ -158,9 +163,19 @@ export class PracticeService {
     // Update user progress
     await this.updateUserProgress(userId);
 
+    // Generate signed URL for audio playback if audio was uploaded
+    let audioPlaybackUrl: string | null = null;
+    if (audioKey) {
+      try {
+        audioPlaybackUrl = await this.s3Service.getSignedUrl(audioKey);
+      } catch (error) {
+        console.warn('Failed to generate signed URL for playback:', error.message);
+      }
+    }
+
     return {
       ...updatedSession,
-      audioUrl, // Return signed URL for playback
+      audioUrl: audioPlaybackUrl, // Return signed URL for playback
     };
   }
 
@@ -178,8 +193,14 @@ export class PracticeService {
     });
 
     if (session?.audioUrl) {
-      const signedUrl = await this.s3Service.getSignedUrl(session.audioUrl);
-      return { ...session, audioUrl: signedUrl };
+      try {
+        const signedUrl = await this.s3Service.getSignedUrl(session.audioUrl);
+        return { ...session, audioUrl: signedUrl };
+      } catch (error) {
+        console.error('Failed to generate signed URL for audio:', error.message);
+        // Return session without audio URL if S3 is not configured
+        return { ...session, audioUrl: null };
+      }
     }
 
     return session;
@@ -399,5 +420,30 @@ export class PracticeService {
     });
 
     return result;
+  }
+
+  async generateEnhancedModelAnswer(sessionId: string, userId: string) {
+    const session = await this.prisma.practiceSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        question: true,
+      },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new BadRequestException('Session not found');
+    }
+
+    if (!session.transcript || !session.overallBandScore) {
+      throw new BadRequestException('Session must be completed to generate model answer');
+    }
+
+    return this.speechAnalysis.generateEnhancedModelAnswer({
+      part: session.part as 1 | 2 | 3,
+      question: session.question.questionText,
+      userTranscript: session.transcript,
+      userScore: Number(session.overallBandScore),
+      cueCardPoints: session.question.cueCardPoints as string[] | undefined,
+    });
   }
 }
