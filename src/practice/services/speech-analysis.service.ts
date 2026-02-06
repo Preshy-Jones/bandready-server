@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { SYSTEM_PROMPT, generateAssessmentPrompt, generateModelAnswerPrompt } from '../prompts/assessment-prompt';
 
@@ -46,13 +45,9 @@ export interface TranscriptionResult {
 
 @Injectable()
 export class SpeechAnalysisService {
-  private anthropic: Anthropic;
   private openai: OpenAI;
 
   constructor(private readonly configService: ConfigService) {
-    this.anthropic = new Anthropic({
-      apiKey: this.configService.get<string>('ANTHROPIC_API_KEY'),
-    });
     this.openai = new OpenAI({
       apiKey: this.configService.get<string>('OPENAI_API_KEY'),
     });
@@ -116,67 +111,6 @@ export class SpeechAnalysisService {
     };
   }
 
-  private cleanAndFixJSON(jsonStr: string): string {
-    // Remove any text before first { or after last }
-    const firstBrace = jsonStr.indexOf('{');
-    const lastBrace = jsonStr.lastIndexOf('}');
-
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-    }
-
-    // Fix common JSON issues:
-    // 1. Remove trailing commas before closing braces/brackets
-    jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1');
-
-    // 2. Handle escaped characters that might be problematic
-    // Replace smart quotes with regular quotes
-    jsonStr = jsonStr.replace(/[\u2018\u2019]/g, "'");
-    jsonStr = jsonStr.replace(/[\u201C\u201D]/g, '"');
-
-    return jsonStr;
-  }
-
-  private parseJSONFromResponse(responseText: string, context: string): any {
-    // Try to extract JSON from markdown code blocks
-    const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/);
-    let jsonStr = jsonMatch ? jsonMatch[1].trim() : responseText.trim();
-
-    try {
-      return JSON.parse(jsonStr);
-    } catch (error) {
-      // Log the error with context for debugging
-      console.error(`[SpeechAnalysis] JSON parsing failed for ${context}`);
-      console.error('[SpeechAnalysis] Error:', error.message);
-      console.error('[SpeechAnalysis] JSON string (first 500 chars):', jsonStr.substring(0, 500));
-      console.error('[SpeechAnalysis] JSON string (last 500 chars):', jsonStr.substring(Math.max(0, jsonStr.length - 500)));
-
-      // Try to fix common JSON issues
-      try {
-        const cleanedJson = this.cleanAndFixJSON(jsonStr);
-        console.log('[SpeechAnalysis] Attempting to parse cleaned JSON...');
-        return JSON.parse(cleanedJson);
-      } catch (retryError) {
-        console.error('[SpeechAnalysis] Retry parsing also failed:', retryError.message);
-
-        // Last resort: try with json5 parser for more lenient parsing
-        try {
-          // Use eval with proper sandboxing (only as last resort for JSON)
-          const sanitized = this.cleanAndFixJSON(jsonStr);
-          console.log('[SpeechAnalysis] Attempting lenient parse...');
-          // Wrap in parentheses to force expression context
-          const result = eval('(' + sanitized + ')');
-          console.log('[SpeechAnalysis] Lenient parse succeeded');
-          return result;
-        } catch (evalError) {
-          console.error('[SpeechAnalysis] All parsing attempts failed:', evalError.message);
-        }
-      }
-
-      // If all parsing attempts fail, throw with context
-      throw new Error(`Failed to parse JSON response for ${context}: ${error.message}. Check server logs for details.`);
-    }
-  }
 
   async assessSpeech(params: {
     part: 1 | 2 | 3;
@@ -197,20 +131,22 @@ export class SpeechAnalysisService {
       cueCardPoints: params.cueCardPoints,
     });
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 3072, // Increased from 2048 to prevent truncation
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 3072,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT + '\n\nYou must respond with valid JSON only.' },
+        { role: 'user', content: prompt },
+      ],
     });
 
-    // Extract JSON from response
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response content from OpenAI');
     }
 
-    return this.parseJSONFromResponse(content.text, 'assessSpeech');
+    return JSON.parse(content);
   }
 
   async generateModelAnswer(params: {
@@ -221,18 +157,22 @@ export class SpeechAnalysisService {
   }): Promise<{ modelAnswer: string; keyVocabulary: string[]; grammarHighlights: string[] }> {
     const prompt = generateModelAnswerPrompt(params);
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1536, // Increased from 1024 to prevent truncation
-      messages: [{ role: 'user', content: prompt }],
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 1536,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You are an expert IELTS speaking examiner. You must respond with valid JSON only.' },
+        { role: 'user', content: prompt },
+      ],
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response content from OpenAI');
     }
 
-    return this.parseJSONFromResponse(content.text, 'generateModelAnswer');
+    return JSON.parse(content);
   }
 
   async generateEnhancedModelAnswer(params: {
@@ -345,17 +285,21 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
 7. Complete the entire JSON structure - do not truncate
 8. No additional text before or after the JSON code block`;
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 5120, // Increased from 4096 for complex responses
-      messages: [{ role: 'user', content: prompt }],
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 5120,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You are an expert IELTS speaking examiner. You must respond with valid JSON only.' },
+        { role: 'user', content: prompt },
+      ],
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response content from OpenAI');
     }
 
-    return this.parseJSONFromResponse(content.text, 'generateEnhancedModelAnswer');
+    return JSON.parse(content);
   }
 }

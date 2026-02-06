@@ -29,6 +29,7 @@ model User {
 
   practiceSessions PracticeSession[]
   progress         UserProgress?
+  mockTests        MockTest[]
 
   @@map("users")
 }
@@ -101,12 +102,18 @@ model PracticeSession {
   completedAt             DateTime? @map("completed_at")
   createdAt               DateTime  @default(now()) @map("created_at")
 
+  // Mock test relation
+  mockTestId              String?   @map("mock_test_id")
+  questionNumber          Int?      @map("question_number")
+
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   question SpeakingQuestion @relation(fields: [questionId], references: [id])
+  mockTest MockTest?        @relation(fields: [mockTestId], references: [id])
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([part])
   @@index([overallBandScore])
+  @@index([mockTestId])
   @@map("practice_sessions")
 }
 
@@ -144,4 +151,36 @@ model UserProgress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_progress")
+}
+
+model MockTest {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+
+  // Configuration
+  timingMode        String    @default("flexible") @map("timing_mode")
+
+  // State tracking
+  currentPart       Int       @default(1) @map("current_part")
+  currentQuestion   Int       @default(1) @map("current_question")
+  status            String    @default("in_progress")
+
+  // Question sequencing
+  questionSequence  Json?     @map("question_sequence") // Stores pre-selected question IDs
+  part2Topic        String?   @map("part2_topic") @db.VarChar(100) // For linking Part 3 questions
+
+  // Results
+  overallScore      Decimal?  @map("overall_score") @db.Decimal(2, 1)
+  crossPartAnalysis Json?     @map("cross_part_analysis")
+
+  // Timestamps
+  startedAt         DateTime  @default(now()) @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions          PracticeSession[]
+
+  @@index([userId, completedAt(sort: Desc)])
+  @@map("mock_tests")
 }

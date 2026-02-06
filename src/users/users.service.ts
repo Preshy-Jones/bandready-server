@@ -75,6 +75,8 @@ export class UsersService {
     targetBandScore?: number;
     targetExamDate?: Date;
   }) {
+    console.log('[UsersService] updateGoals called with:', { userId, data });
+    
     const updateData: Prisma.UserUpdateInput = {};
     
     if (data.targetBandScore !== undefined) {
@@ -84,10 +86,16 @@ export class UsersService {
       updateData.targetExamDate = data.targetExamDate;
     }
     
-    return this.prisma.user.update({
+    console.log('[UsersService] Prisma updateData:', updateData);
+    
+    const result = await this.prisma.user.update({
       where: { id: userId },
       data: updateData,
     });
+    
+    console.log('[UsersService] Update result - targetBandScore:', result.targetBandScore);
+    
+    return result;
   }
 
   async resetDailySessionCount(userId: string) {

@@ -51,6 +51,8 @@ export class UsersController {
     @CurrentUser() user: User,
     @Body() dto: UpdateGoalsDto,
   ) {
+    console.log('[UsersController] updateGoals DTO received:', dto);
+    
     const data: { targetBandScore?: number; targetExamDate?: Date } = {};
     
     if (dto.targetBandScore !== undefined) {
@@ -59,6 +61,8 @@ export class UsersController {
     if (dto.targetExamDate) {
       data.targetExamDate = new Date(dto.targetExamDate);
     }
+    
+    console.log('[UsersController] calling usersService.updateGoals with:', data);
     
     return this.usersService.updateGoals(user.id, data);
   }

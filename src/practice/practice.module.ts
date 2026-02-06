@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { PracticeController } from './practice.controller';
 import { PracticeService } from './practice.service';
+import { MockTestController } from './mock-test.controller';
+import { MockTestService } from './mock-test.service';
 import { SpeechAnalysisService } from './services/speech-analysis.service';
 import { S3Service } from './services/s3.service';
 import { UsersModule } from '../users/users.module';
@@ -15,7 +17,7 @@ import { UsersModule } from '../users/users.module';
     }),
     UsersModule,
   ],
-  controllers: [PracticeController],
-  providers: [PracticeService, SpeechAnalysisService, S3Service],
+  controllers: [PracticeController, MockTestController],
+  providers: [PracticeService, MockTestService, SpeechAnalysisService, S3Service],
 })
 export class PracticeModule {}
