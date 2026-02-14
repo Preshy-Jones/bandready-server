@@ -31,6 +31,12 @@ model User {
   progress         UserProgress?
   mockTests        MockTest[]
 
+  // Writing module relations
+  essaySubmissions EssaySubmission[]
+  writingWeaknesses WritingWeakness[]
+  drillAttempts    DrillAttempt[]
+  writingProgress  WritingProgress?
+
   @@map("users")
 }
 
@@ -183,4 +189,267 @@ model MockTest {
 
   @@index([userId, completedAt(sort: Desc)])
   @@map("mock_tests")
+}
+
+// =============================================
+// WRITING MODULE
+// =============================================
+
+// =============================================
+// WRITING QUESTIONS
+// =============================================
+model WritingQuestion {
+  id          String   @id @default(uuid())
+  taskType    TaskType
+  subType     String?  // For Task 1: "line_graph", "bar_chart", "pie_chart", "table", "process", "map"
+                       // For Task 2: "opinion", "discussion", "problem_solution", "advantages_disadvantages", "two_part"
+  prompt      String   @db.Text
+  imageUrl    String?  @map("image_url") // For Task 1 charts/graphs
+  modelEssays ModelEssay[]
+  submissions EssaySubmission[]
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([taskType, subType])
+  @@map("writing_questions")
+}
+
+enum TaskType {
+  TASK1
+  TASK2
+}
+
+// =============================================
+// ESSAY SUBMISSIONS
+// =============================================
+model EssaySubmission {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId        String   @map("question_id")
+  question          WritingQuestion @relation(fields: [questionId], references: [id])
+
+  essayText         String   @map("essay_text") @db.Text
+  wordCount         Int      @map("word_count")
+  timeSpentSeconds  Int      @map("time_spent_seconds")
+
+  // Scores (set after AI assessment)
+  taskResponseScore      Decimal? @map("task_response_score") @db.Decimal(2,1)
+  coherenceCohesionScore Decimal? @map("coherence_cohesion_score") @db.Decimal(2,1)
+  lexicalResourceScore   Decimal? @map("lexical_resource_score") @db.Decimal(2,1)
+  grammarAccuracyScore   Decimal? @map("grammar_accuracy_score") @db.Decimal(2,1)
+  overallBandScore       Decimal? @map("overall_band_score") @db.Decimal(2,1)
+
+  // AI Feedback
+  feedback          EssayFeedback?
+
+  // Metadata
+  sessionType       SessionType @default(PRACTICE) @map("session_type")
+  submittedAt       DateTime @default(now()) @map("submitted_at")
+
+  @@index([userId, submittedAt(sort: Desc)])
+  @@index([overallBandScore])
+  @@map("essay_submissions")
+}
+
+enum SessionType {
+  DIAGNOSTIC
+  PRACTICE
+  DRILL
+  EXAM_SIMULATION
+}
+
+// =============================================
+// ESSAY FEEDBACK (AI-Generated)
+// =============================================
+model EssayFeedback {
+  id              String   @id @default(uuid())
+  essayId         String   @unique @map("essay_id")
+  essay           EssaySubmission @relation(fields: [essayId], references: [id], onDelete: Cascade)
+
+  // Criterion-specific feedback
+  taskResponseFeedback      String @map("task_response_feedback") @db.Text
+  coherenceCohesionFeedback String @map("coherence_cohesion_feedback") @db.Text
+  lexicalResourceFeedback   String @map("lexical_resource_feedback") @db.Text
+  grammarAccuracyFeedback   String @map("grammar_accuracy_feedback") @db.Text
+  overallFeedback           String @map("overall_feedback") @db.Text
+
+  // Annotations (JSON array of inline highlights)
+  annotations     Json  // Array<{startIndex, endIndex, color, type, explanation}>
+
+  // Examiner Eye insights
+  examinerInsights Json @map("examiner_insights") // Array<{sentence, issue, bandImpact}>
+
+  // Priority improvements
+  priorityFixes   Json @map("priority_fixes") // Array<{issue, explanation, drillType}>
+
+  // Detected errors (feeds into weakness profile)
+  detectedErrors  Json @map("detected_errors") // Array<{category, specificError, sentence, correction}>
+
+  // Vocabulary suggestions
+  vocabularySuggestions Json? @map("vocabulary_suggestions") // Array<{original, suggested, context}>
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("essay_feedback")
+}
+
+// =============================================
+// WEAKNESS PROFILE
+// =============================================
+model WritingWeakness {
+  id                    String   @id @default(uuid())
+  userId                String   @map("user_id")
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category              WeaknessCategory
+  specificError         String   @map("specific_error") // e.g., "comma_splice", "article_misuse", "weak_collocation"
+  displayName           String   @map("display_name") // e.g., "Comma Splices", "Article Misuse"
+
+  severity              Severity @default(MEDIUM)
+  frequency             Int      @default(1)  // Total occurrences
+  sessionsWithoutError  Int      @default(0)  @map("sessions_without_error") // Consecutive clean sessions
+  status                ImprovementStatus @default(STAGNANT)
+
+  lastOccurrence        DateTime @default(now()) @map("last_occurrence")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, specificError])
+  @@index([userId, severity])
+  @@map("writing_weaknesses")
+}
+
+enum WeaknessCategory {
+  GRAMMAR
+  VOCABULARY
+  COHERENCE
+  TASK_RESPONSE
+}
+
+enum Severity {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ImprovementStatus {
+  IMPROVING
+  STAGNANT
+  WORSENING
+}
+
+// =============================================
+// DRILLS
+// =============================================
+model WritingDrill {
+  id              String   @id @default(uuid())
+  type            DrillType
+  category        WeaknessCategory
+  specificSkill   String   @map("specific_skill") // e.g., "article_correction", "collocation_upgrade"
+
+  instruction     String   @db.Text
+  content         String   @db.Text  // The drill content (sentence to fix, options, etc.)
+  correctAnswer   String   @map("correct_answer") @db.Text
+  explanation     String   @db.Text  // Why this is correct
+
+  difficulty      Difficulty @default(MEDIUM)
+  timeLimit       Int?     @map("time_limit") // Seconds, null = no limit
+
+  relatedWeaknesses String[] @map("related_weaknesses") // Array of specificError values this drill addresses
+
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  attempts        DrillAttempt[]
+
+  @@index([type, category, difficulty])
+  @@map("writing_drills")
+}
+
+enum DrillType {
+  MICRO_DRILL      // 5-10 min focused exercises
+  TASK1_TRACK      // Task 1 specific skills
+  TASK2_TRACK      // Task 2 specific skills
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model DrillAttempt {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drillId         String   @map("drill_id")
+  drill           WritingDrill @relation(fields: [drillId], references: [id])
+
+  userAnswer      String   @map("user_answer") @db.Text
+  isCorrect       Boolean  @map("is_correct")
+  timeSpentSeconds Int?    @map("time_spent_seconds")
+
+  attemptedAt     DateTime @default(now()) @map("attempted_at")
+
+  @@index([userId, drillId])
+  @@index([userId, attemptedAt(sort: Desc)])
+  @@map("drill_attempts")
+}
+
+// =============================================
+// MODEL ESSAYS
+// =============================================
+model ModelEssay {
+  id              String   @id @default(uuid())
+  questionId      String   @map("question_id")
+  question        WritingQuestion @relation(fields: [questionId], references: [id])
+
+  essayText       String   @map("essay_text") @db.Text
+  bandScore       Decimal  @map("band_score") @db.Decimal(2,1)  // e.g., 8.0, 8.5
+
+  // Highlighted elements for learning
+  strongPhrases   Json     @map("strong_phrases") // Array<{text, explanation}>
+  structureNotes  Json     @map("structure_notes") // Array<{section, note}>
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([questionId])
+  @@map("model_essays")
+}
+
+// =============================================
+// WRITING PROGRESS (Aggregated Stats)
+// =============================================
+model WritingProgress {
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Rolling averages (last 10 essays)
+  avgOverallScore       Decimal? @map("avg_overall_score") @db.Decimal(3,2)
+  avgTaskResponse       Decimal? @map("avg_task_response") @db.Decimal(3,2)
+  avgCoherence          Decimal? @map("avg_coherence") @db.Decimal(3,2)
+  avgLexical            Decimal? @map("avg_lexical") @db.Decimal(3,2)
+  avgGrammar            Decimal? @map("avg_grammar") @db.Decimal(3,2)
+
+  // Task-specific averages
+  avgTask1Score         Decimal? @map("avg_task1_score") @db.Decimal(3,2)
+  avgTask2Score         Decimal? @map("avg_task2_score") @db.Decimal(3,2)
+
+  // Totals
+  totalEssays           Int      @default(0) @map("total_essays")
+  totalDrillsCompleted  Int      @default(0) @map("total_drills_completed")
+  totalPracticeMinutes  Decimal  @default(0) @map("total_practice_minutes") @db.Decimal(8,2)
+
+  // Milestones (JSON array of achieved milestones)
+  milestones            Json     @default("[]")
+
+  // Exam readiness
+  examReadyTask1        Boolean  @default(false) @map("exam_ready_task1")
+  examReadyTask2        Boolean  @default(false) @map("exam_ready_task2")
+
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("writing_progress")
 }

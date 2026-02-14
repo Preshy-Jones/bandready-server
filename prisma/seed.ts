@@ -1,4 +1,9 @@
 import { PrismaClient } from '@prisma/client';
+import { task1Questions } from '../data/task1-questions';
+import { task2Questions } from '../data/task2-questions';
+import { grammarDrills } from '../data/grammar-drills';
+import { vocabularyDrills } from '../data/vocabulary-drills';
+import { coherenceDrills } from '../data/coherence-drills';
 
 const prisma = new PrismaClient();
 
@@ -320,8 +325,61 @@ async function main() {
     });
   }
   console.log(`✅ Created ${part3Questions.length} Part 3 questions`);
+
+  // =========================
+  // WRITING SEED
+  // =========================
+  console.log('🌱 Seeding writing module data...');
+
+  // Clear writing-dependent data first
+  await prisma.essayFeedback.deleteMany();
+  await prisma.drillAttempt.deleteMany();
+  await prisma.essaySubmission.deleteMany();
+  await prisma.modelEssay.deleteMany();
+  await prisma.writingWeakness.deleteMany();
+  await prisma.writingProgress.deleteMany();
+  await prisma.writingDrill.deleteMany();
+  await prisma.writingQuestion.deleteMany();
+  console.log('✓ Cleared existing writing data');
+
+  const writingQuestions = [...task1Questions, ...task2Questions];
+  await prisma.writingQuestion.createMany({
+    data: writingQuestions.map((q) => {
+      const imageUrl =
+        'imageUrl' in q && typeof q.imageUrl === 'string' ? q.imageUrl : null;
+
+      return {
+        id: q.id,
+        taskType: q.taskType as any,
+        subType: q.subType ?? null,
+        prompt: q.prompt,
+        imageUrl,
+        isActive: true,
+      };
+    }),
+  });
+  console.log(`✅ Created ${writingQuestions.length} writing questions`);
+
+  const writingDrills = [...grammarDrills, ...vocabularyDrills, ...coherenceDrills];
+  await prisma.writingDrill.createMany({
+    data: writingDrills.map((d) => ({
+      id: d.id,
+      type: d.type as any,
+      category: d.category as any,
+      specificSkill: d.specificSkill,
+      instruction: d.instruction,
+      content: d.content,
+      correctAnswer: d.correctAnswer,
+      explanation: d.explanation,
+      difficulty: d.difficulty as any,
+      timeLimit: d.timeLimit ?? null,
+      relatedWeaknesses: d.relatedWeaknesses ?? [],
+      isActive: true,
+    })),
+  });
+  console.log(`✅ Created ${writingDrills.length} writing drills`);
   
-  console.log('🎉 Database seeded successfully with official IELTS Speaking questions!');
+  console.log('🎉 Database seeded successfully with speaking + writing data!');
 }
 
 main()
