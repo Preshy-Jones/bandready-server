@@ -1,12 +1,12 @@
 import {
   Controller,
   Get,
-  Param,
   Query,
   UseGuards,
   Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ProgressService } from '../services/progress.service';
 import { WeaknessProfileService } from '../services/weakness-profile.service';
 
@@ -23,22 +23,22 @@ export class ProgressController {
   /**
    * Get overall writing progress
    */
-  @Get(':userId')
-  async getProgress(@Param('userId') userId: string) {
-    const progress = await this.progressService.getProgress(userId);
+  @Get()
+  async getProgress(@CurrentUser() user: any) {
+    const progress = await this.progressService.getProgress(user.id);
     return progress;
   }
 
   /**
    * Get score trends over time
    */
-  @Get(':userId/trend')
+  @Get('trend')
   async getScoreTrend(
-    @Param('userId') userId: string,
+    @CurrentUser() user: any,
     @Query('days') days?: string,
   ) {
     const numDays = days ? parseInt(days, 10) : 30;
-    const trend = await this.progressService.getScoreTrend(userId, numDays);
+    const trend = await this.progressService.getScoreTrend(user.id, numDays);
 
     return {
       trend,
@@ -49,9 +49,9 @@ export class ProgressController {
   /**
    * Get error frequency for visualization
    */
-  @Get(':userId/error-frequency')
-  async getErrorFrequency(@Param('userId') userId: string) {
-    const errorFrequency = await this.progressService.getErrorFrequency(userId);
+  @Get('error-frequency')
+  async getErrorFrequency(@CurrentUser() user: any) {
+    const errorFrequency = await this.progressService.getErrorFrequency(user.id);
 
     return errorFrequency;
   }
@@ -59,9 +59,9 @@ export class ProgressController {
   /**
    * Get weakness profile
    */
-  @Get(':userId/weaknesses')
-  async getWeaknessProfile(@Param('userId') userId: string) {
-    const weaknesses = await this.weaknessService.getWeaknessProfile(userId);
+  @Get('weaknesses')
+  async getWeaknessProfile(@CurrentUser() user: any) {
+    const weaknesses = await this.weaknessService.getWeaknessProfile(user.id);
 
     return {
       weaknesses,

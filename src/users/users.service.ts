@@ -1,11 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { GoogleUser } from '../auth/auth.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private isPremiumActive(user: Pick<User, 'subscriptionTier' | 'subscriptionExpiresAt'>): boolean {
+    if (user.subscriptionTier !== 'premium') {
+      return false;
+    }
+
+    if (!user.subscriptionExpiresAt) {
+      return true;
+    }
+
+    return user.subscriptionExpiresAt > new Date();
+  }
+
+  async syncSubscriptionStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+
+    if (
+      user.subscriptionTier === 'premium' &&
+      user.subscriptionExpiresAt &&
+      user.subscriptionExpiresAt <= new Date()
+    ) {
+      return this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionTier: 'free',
+          subscriptionExpiresAt: null,
+        },
+      });
+    }
+
+    return user;
+  }
 
   async findById(id: string) {
     return this.prisma.user.findUnique({
@@ -130,15 +163,15 @@ export class UsersService {
   }
 
   async canStartSession(userId: string): Promise<boolean> {
-    // DEV_MODE bypasses all restrictions
-    if (process.env.DEV_MODE === 'true') return true;
-    
-    const user = await this.resetDailySessionCount(userId);
+    const normalizedUser = await this.syncSubscriptionStatus(userId);
+    if (!normalizedUser) return false;
+
+    const user = await this.resetDailySessionCount(normalizedUser.id);
     
     if (!user) return false;
     
     // Premium users have unlimited sessions
-    if (user.subscriptionTier === 'premium') return true;
+    if (this.isPremiumActive(user)) return true;
     
     // Free users get 3 sessions per day
     return user.dailySessionsUsed < 3;

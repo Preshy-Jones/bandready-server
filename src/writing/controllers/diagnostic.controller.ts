@@ -3,7 +3,6 @@ import {
   Post,
   Get,
   Body,
-  Param,
   UseGuards,
   Logger,
 } from '@nestjs/common';
@@ -33,14 +32,22 @@ export class DiagnosticController {
   @Post('start')
   async startDiagnostic() {
     // Get random Task 1 and Task 2 questions
+    const [task1Count, task2Count] = await Promise.all([
+      this.prisma.writingQuestion.count({ where: { taskType: 'TASK1', isActive: true } }),
+      this.prisma.writingQuestion.count({ where: { taskType: 'TASK2', isActive: true } }),
+    ]);
+
+    const task1Offset = task1Count > 0 ? Math.floor(Math.random() * task1Count) : 0;
+    const task2Offset = task2Count > 0 ? Math.floor(Math.random() * task2Count) : 0;
+
     const [task1Question, task2Question] = await Promise.all([
       this.prisma.writingQuestion.findFirst({
         where: { taskType: 'TASK1', isActive: true },
-        orderBy: { createdAt: 'desc' },
+        skip: task1Offset,
       }),
       this.prisma.writingQuestion.findFirst({
         where: { taskType: 'TASK2', isActive: true },
-        orderBy: { createdAt: 'desc' },
+        skip: task2Offset,
       }),
     ]);
 
@@ -60,15 +67,13 @@ export class DiagnosticController {
   ) {
     this.logger.log(`Submitting diagnostic for user ${user.id}`);
 
-    // Get questions
+    // Get questions using IDs from the DTO (sent by the start endpoint)
     const [task1Question, task2Question] = await Promise.all([
-      this.prisma.writingQuestion.findFirst({
-        where: { taskType: 'TASK1', isActive: true },
-        orderBy: { createdAt: 'desc' },
+      this.prisma.writingQuestion.findUnique({
+        where: { id: dto.task1QuestionId },
       }),
-      this.prisma.writingQuestion.findFirst({
-        where: { taskType: 'TASK2', isActive: true },
-        orderBy: { createdAt: 'desc' },
+      this.prisma.writingQuestion.findUnique({
+        where: { id: dto.task2QuestionId },
       }),
     ]);
 
@@ -163,12 +168,12 @@ export class DiagnosticController {
   /**
    * Get diagnostic results
    */
-  @Get(':userId/results')
-  async getDiagnosticResults(@Param('userId') userId: string) {
+  @Get('results')
+  async getDiagnosticResults(@CurrentUser() user: any) {
     // Get diagnostic essays
     const diagnosticEssays = await this.prisma.essaySubmission.findMany({
       where: {
-        userId,
+        userId: user.id,
         sessionType: 'DIAGNOSTIC',
       },
       include: {
@@ -180,7 +185,7 @@ export class DiagnosticController {
     });
 
     // Get weakness profile
-    const weaknesses = await this.weaknessService.getWeaknessProfile(userId);
+    const weaknesses = await this.weaknessService.getWeaknessProfile(user.id);
 
     return {
       essays: diagnosticEssays,

@@ -5,10 +5,13 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
   Logger,
   BadRequestException,
+  HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -61,6 +64,22 @@ export class EssayController {
   }
 
   /**
+   * Get specific question by ID
+   */
+  @Get('questions/by-id/:questionId')
+  async getQuestionById(@Param('questionId') questionId: string) {
+    const question = await this.prisma.writingQuestion.findUnique({
+      where: { id: questionId },
+    });
+
+    if (!question) {
+      throw new BadRequestException('Question not found');
+    }
+
+    return question;
+  }
+
+  /**
    * Submit essay for assessment
    */
   @Post('essay/submit')
@@ -105,30 +124,21 @@ export class EssayController {
   }
 
   /**
-   * Get essay feedback (generates if not exists)
+   * Get essay feedback (returns 202 if assessment is still pending)
    */
   @Get('essay/:submissionId/feedback')
-  async getFeedback(@Param('submissionId') submissionId: string) {
+  async getFeedback(
+    @Param('submissionId') submissionId: string,
+    @Res() res: Response,
+  ) {
     const feedback = await this.assessmentService.getFeedback(submissionId);
 
-    // Also get scores from submission
-    const submission = await this.prisma.essaySubmission.findUnique({
-      where: { id: submissionId },
-    });
-
-    if (submission) {
-      feedback.scores = {
-        taskResponse: submission.taskResponseScore
-          ? Number(submission.taskResponseScore)
-          : undefined,
-        coherenceCohesion: Number(submission.coherenceCohesionScore || 0),
-        lexicalResource: Number(submission.lexicalResourceScore || 0),
-        grammaticalRangeAccuracy: Number(submission.grammarAccuracyScore || 0),
-        overall: Number(submission.overallBandScore || 0),
-      };
+    if (!feedback) {
+      // Assessment is still in progress
+      return res.status(HttpStatus.ACCEPTED).json({ status: 'pending' });
     }
 
-    return feedback;
+    return res.json(feedback);
   }
 
   /**
@@ -167,14 +177,14 @@ export class EssayController {
   /**
    * Get user's essay history
    */
-  @Get('essays/:userId')
+  @Get('essays')
   async getEssayHistory(
-    @Param('userId') userId: string,
+    @CurrentUser() user: any,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('taskType') taskType?: string,
   ) {
-    const where: any = { userId };
+    const where: any = { userId: user.id };
 
     if (taskType) {
       where.question = {

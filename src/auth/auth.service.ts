@@ -98,6 +98,7 @@ export class AuthService {
         targetBandScore: user.targetBandScore,
         nativeLanguage: user.nativeLanguage,
         subscriptionTier: user.subscriptionTier,
+        subscriptionExpiresAt: user.subscriptionExpiresAt,
       },
       ...tokens,
     };

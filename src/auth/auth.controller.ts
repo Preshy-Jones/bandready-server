@@ -62,6 +62,7 @@ export class AuthController {
       targetExamDate: req.user.targetExamDate,
       nativeLanguage: req.user.nativeLanguage,
       subscriptionTier: req.user.subscriptionTier,
+      subscriptionExpiresAt: req.user.subscriptionExpiresAt,
       dailySessionsUsed: req.user.dailySessionsUsed,
     };
   }

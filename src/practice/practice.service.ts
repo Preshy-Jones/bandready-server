@@ -347,10 +347,7 @@ export class PracticeService {
 
   async getStats(userId: string) {
     const progress = await this.getUserProgress(userId);
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { targetBandScore: true, dailySessionsUsed: true, subscriptionTier: true },
-    });
+    const normalizedUser = await this.usersService.syncSubscriptionStatus(userId);
 
     // Get score trend (last 10 sessions)
     const recentScores = await this.prisma.practiceSession.findMany({
@@ -373,9 +370,9 @@ export class PracticeService {
 
     return {
       progress,
-      targetScore: user?.targetBandScore,
-      dailySessionsUsed: user?.dailySessionsUsed || 0,
-      dailySessionsLimit: user?.subscriptionTier === 'premium' ? null : 3,
+      targetScore: normalizedUser?.targetBandScore,
+      dailySessionsUsed: normalizedUser?.dailySessionsUsed || 0,
+      dailySessionsLimit: normalizedUser?.subscriptionTier === 'premium' ? null : 3,
       scoreTrend: recentScores,
       topicDistribution: topicDistribution.map(t => ({
         part: t.part,

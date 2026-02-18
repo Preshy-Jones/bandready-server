@@ -96,10 +96,8 @@ export class DrillService {
       },
     });
 
-    // Update progress if correct
-    if (isCorrect) {
-      await this.updateDrillProgress(userId);
-    }
+    // Update progress for every attempt
+    await this.updateDrillProgress(userId);
 
     // Generate AI feedback if answer is incorrect and Claude is available
     if (!isCorrect && this.anthropic) {

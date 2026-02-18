@@ -157,29 +157,37 @@ export class EssayAssessmentService {
   }
 
   /**
-   * Get feedback for an essay (generate if not exists)
+   * Get feedback for an essay (returns null if assessment is still pending)
    */
-  async getFeedback(essayId: string): Promise<EssayFeedbackResponse> {
+  async getFeedback(essayId: string): Promise<EssayFeedbackResponse | null> {
+    // Get the submission with its question to determine task type
+    const submission = await this.prisma.essaySubmission.findUnique({
+      where: { id: essayId },
+      include: { question: true },
+    });
+
+    if (!submission) {
+      throw new BadRequestException('Essay not found');
+    }
+
     // Check if feedback already exists
     const existingFeedback = await this.prisma.essayFeedback.findUnique({
       where: { essayId },
     });
 
     if (existingFeedback) {
-      // Return existing feedback
-      const isTask1 = !existingFeedback.taskResponseFeedback.includes(
-        'position',
-      ); // Simple heuristic
+      // Return existing feedback with actual scores from the submission
+      const isTask1 = submission.question.taskType === 'TASK1';
 
       return {
         scores: {
           ...(isTask1
-            ? { taskAchievement: 0 }
-            : { taskResponse: 0 }), // Will be populated from essay submission
-          coherenceCohesion: 0,
-          lexicalResource: 0,
-          grammaticalRangeAccuracy: 0,
-          overall: 0,
+            ? { taskAchievement: Number(submission.taskResponseScore || 0) }
+            : { taskResponse: Number(submission.taskResponseScore || 0) }),
+          coherenceCohesion: Number(submission.coherenceCohesionScore || 0),
+          lexicalResource: Number(submission.lexicalResourceScore || 0),
+          grammaticalRangeAccuracy: Number(submission.grammarAccuracyScore || 0),
+          overall: Number(submission.overallBandScore || 0),
         },
         feedback: {
           ...(isTask1
@@ -203,23 +211,20 @@ export class EssayAssessmentService {
       };
     }
 
-    // Generate new feedback
-    const essay = await this.prisma.essaySubmission.findUnique({
-      where: { id: essayId },
-      include: { question: true },
-    });
-
-    if (!essay) {
-      throw new BadRequestException('Essay not found');
+    // No feedback yet — check if assessment is likely in progress
+    // If submission has no scores, assessment is still running (fired async on submit)
+    if (!submission.overallBandScore) {
+      return null; // Signal to controller that assessment is pending
     }
 
+    // Scores exist but no feedback row — data inconsistency, regenerate
     const feedback = await this.assessEssay(
-      essay.essayText,
-      essay.question.prompt,
-      essay.question.taskType,
-      essay.question.subType || 'general',
-      essay.wordCount,
-      essay.timeSpentSeconds,
+      submission.essayText,
+      submission.question.prompt,
+      submission.question.taskType,
+      submission.question.subType || 'general',
+      submission.wordCount,
+      submission.timeSpentSeconds,
     );
 
     // Save the feedback

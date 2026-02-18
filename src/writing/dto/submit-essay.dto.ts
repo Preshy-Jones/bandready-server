@@ -28,6 +28,12 @@ export class GetQuestionsDto {
 }
 
 export class SubmitDiagnosticDto {
+  @IsUUID()
+  task1QuestionId: string;
+
+  @IsUUID()
+  task2QuestionId: string;
+
   @IsString()
   @MinLength(100)
   task1Essay: string;

@@ -36,8 +36,37 @@ model User {
   writingWeaknesses WritingWeakness[]
   drillAttempts    DrillAttempt[]
   writingProgress  WritingProgress?
+  paymentTransactions PaymentTransaction[]
 
   @@map("users")
+}
+
+model PaymentTransaction {
+  id                   String   @id @default(uuid())
+  userId               String   @map("user_id")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider             String   @default("paystack")
+  plan                 String
+  amountKobo           Int      @map("amount_kobo")
+  currency             String   @default("NGN")
+  reference            String   @unique
+  status               PaymentStatus @default(PENDING)
+  paidAt               DateTime? @map("paid_at")
+  subscriptionStartsAt DateTime? @map("subscription_starts_at")
+  subscriptionEndsAt   DateTime? @map("subscription_ends_at")
+  metadata             Json?
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("payment_transactions")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 model SpeakingQuestion {
@@ -427,15 +456,15 @@ model WritingProgress {
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Rolling averages (last 10 essays)
-  avgOverallScore       Decimal? @map("avg_overall_score") @db.Decimal(3,2)
-  avgTaskResponse       Decimal? @map("avg_task_response") @db.Decimal(3,2)
-  avgCoherence          Decimal? @map("avg_coherence") @db.Decimal(3,2)
-  avgLexical            Decimal? @map("avg_lexical") @db.Decimal(3,2)
-  avgGrammar            Decimal? @map("avg_grammar") @db.Decimal(3,2)
+  avgOverallScore       Decimal? @map("avg_overall_score") @db.Decimal(4,2)
+  avgTaskResponse       Decimal? @map("avg_task_response") @db.Decimal(4,2)
+  avgCoherence          Decimal? @map("avg_coherence") @db.Decimal(4,2)
+  avgLexical            Decimal? @map("avg_lexical") @db.Decimal(4,2)
+  avgGrammar            Decimal? @map("avg_grammar") @db.Decimal(4,2)
 
   // Task-specific averages
-  avgTask1Score         Decimal? @map("avg_task1_score") @db.Decimal(3,2)
-  avgTask2Score         Decimal? @map("avg_task2_score") @db.Decimal(3,2)
+  avgTask1Score         Decimal? @map("avg_task1_score") @db.Decimal(4,2)
+  avgTask2Score         Decimal? @map("avg_task2_score") @db.Decimal(4,2)
 
   // Totals
   totalEssays           Int      @default(0) @map("total_essays")

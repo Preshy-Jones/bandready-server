@@ -17,10 +17,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { User } from '@prisma/client';
 import { PracticeService } from './practice.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UsersService } from '../users/users.service';
 
 @Controller('practice')
 export class PracticeController {
-  constructor(private readonly practiceService: PracticeService) {}
+  constructor(
+    private readonly practiceService: PracticeService,
+    private readonly usersService: UsersService,
+  ) {}
 
   // ========================
   // Questions Endpoints
@@ -147,11 +151,9 @@ export class PracticeController {
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
   ) {
-    // DEV_MODE bypasses premium check
-    const isDevMode = process.env.DEV_MODE === 'true';
+    const normalizedUser = await this.usersService.syncSubscriptionStatus(user.id);
 
-    // Check if user is premium (skip in DEV_MODE)
-    if (!isDevMode && user.subscriptionTier !== 'premium') {
+    if (!normalizedUser || normalizedUser.subscriptionTier !== 'premium') {
       throw new ForbiddenException('Model answers are a premium feature');
     }
 
@@ -164,11 +166,9 @@ export class PracticeController {
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
   ) {
-    // DEV_MODE bypasses premium check
-    const isDevMode = process.env.DEV_MODE === 'true';
+    const normalizedUser = await this.usersService.syncSubscriptionStatus(user.id);
 
-    // Check if user is premium (skip in DEV_MODE)
-    if (!isDevMode && user.subscriptionTier !== 'premium') {
+    if (!normalizedUser || normalizedUser.subscriptionTier !== 'premium') {
       throw new ForbiddenException('Enhanced model answers are a premium feature');
     }
 

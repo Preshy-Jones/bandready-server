@@ -50,13 +50,13 @@ export class DrillController {
   /**
    * Get recommended drills based on user's weaknesses
    */
-  @Get('recommended/:userId')
+  @Get('recommended')
   async getRecommendedDrills(
-    @Param('userId') userId: string,
+    @CurrentUser() user: any,
     @Query('limit') limit?: string,
   ) {
     const drills = await this.weaknessService.getRecommendedDrills(
-      userId,
+      user.id,
       limit ? parseInt(limit, 10) : 5,
     );
 
@@ -95,8 +95,8 @@ export class DrillController {
   /**
    * Get drill completion progress
    */
-  @Get('progress/:userId')
-  async getDrillProgress(@Param('userId') userId: string) {
-    return this.drillService.getDrillProgress(userId);
+  @Get('progress')
+  async getDrillProgress(@CurrentUser() user: any) {
+    return this.drillService.getDrillProgress(user.id);
   }
 }
