@@ -439,3 +439,5 @@ func (s *PaymentsService) GetBillingHistory(userID string, limit, offset int) ([
 
 	return transactions, total, err
 }
+
+// paddleCheckoutAdded marks Paddle checkout support
