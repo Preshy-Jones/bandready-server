@@ -2,16 +2,34 @@ import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '@prisma/client';
+import { User, ExamType } from '@prisma/client';
+import { IsOptional, IsString, IsEnum, IsNumber, IsDateString } from 'class-validator';
 
 class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @IsString()
   nativeLanguage?: string;
+
+  @IsOptional()
+  @IsString()
   country?: string;
+
+  @IsOptional()
+  @IsEnum(ExamType)
+  examType?: ExamType;
 }
 
 class UpdateGoalsDto {
+  @IsOptional()
+  @IsNumber()
   targetBandScore?: number;
+
+  @IsOptional()
+  @IsDateString()
   targetExamDate?: string;
 }
 
@@ -29,6 +47,7 @@ export class UsersController {
       avatarUrl: user.avatarUrl,
       nativeLanguage: user.nativeLanguage,
       country: user.country,
+      examType: user.examType,
       targetBandScore: user.targetBandScore,
       targetExamDate: user.targetExamDate,
       subscriptionTier: user.subscriptionTier,

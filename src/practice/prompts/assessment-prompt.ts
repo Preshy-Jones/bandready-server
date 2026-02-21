@@ -112,10 +112,9 @@ Analyze this response and provide your assessment in the following JSON format:
     "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
   }
 }
-\`\`\`
 
 CRITICAL REQUIREMENTS:
-1. Return ONLY valid JSON wrapped in markdown code blocks
+1. Return ONLY valid JSON
 2. Ensure all strings are properly escaped (use \\" for quotes inside strings)
 3. Do not include any trailing commas
 4. Complete the entire JSON structure - do not truncate
@@ -159,13 +158,11 @@ Generate a model answer that would score Band ${params.targetBand}. Include:
 3. Appropriate length for Part ${params.part}
 
 Return JSON format:
-\`\`\`json
 {
   "modelAnswer": "<the full answer text>",
   "keyVocabulary": ["<word1>", "<word2>", "<word3>"],
   "grammarHighlights": ["<structure1>", "<structure2>"]
-}
-\`\`\``;
+}`;
 
   return prompt;
 }

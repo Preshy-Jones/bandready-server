@@ -38,12 +38,19 @@ export class EssayController {
    */
   @Get('questions/:taskType')
   async getQuestion(
+    @CurrentUser() user: any,
     @Param('taskType') taskType: string,
     @Query('subType') subType?: string,
   ) {
+    const fullUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { examType: true },
+    });
+
     const where: any = {
       taskType: taskType.toUpperCase() as TaskType,
       isActive: true,
+      examType: fullUser?.examType || 'ACADEMIC',
     };
 
     if (subType) {
@@ -233,6 +240,7 @@ export class EssayController {
         question.subType || 'general',
         wordCount,
         timeSpent,
+        question.examType,
       );
 
       await this.assessmentService.saveFeedback(submissionId, feedback);

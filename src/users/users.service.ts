@@ -97,6 +97,7 @@ export class UsersService {
     fullName?: string;
     nativeLanguage?: string;
     country?: string;
+    examType?: import('@prisma/client').ExamType;
   }) {
     return this.prisma.user.update({
       where: { id: userId },

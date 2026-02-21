@@ -141,12 +141,21 @@ export class SpeechAnalysisService {
       ],
     });
 
-    const content = response.choices[0]?.message?.content;
+    let content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No response content from OpenAI');
     }
 
-    return JSON.parse(content);
+    // Clean content in case markdown is still present despite prompt changes
+    content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Failed to parse assessment JSON:', error);
+      console.log('Raw content:', content);
+      throw new Error('Failed to parse AI response: ' + error.message);
+    }
   }
 
   async generateModelAnswer(params: {
@@ -167,12 +176,21 @@ export class SpeechAnalysisService {
       ],
     });
 
-    const content = response.choices[0]?.message?.content;
+    let content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No response content from OpenAI');
     }
 
-    return JSON.parse(content);
+    // Clean content
+    content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Failed to parse model answer JSON:', error);
+      console.log('Raw content:', content);
+      throw new Error('Failed to parse AI response: ' + error.message);
+    }
   }
 
   async generateEnhancedModelAnswer(params: {
@@ -273,17 +291,16 @@ Guidelines:
 - Include natural speech patterns (fillers, self-corrections for lower bands, fluency for higher bands)
 - Phrase improvements should be specific quotes from the user's answer
 - Coaching steps should build progressively from basic to advanced
-- Focus on actionable, practical improvements
 
 CRITICAL JSON FORMATTING REQUIREMENTS:
-1. Return ONLY valid JSON wrapped in markdown code blocks (use \`\`\`json)
+1. Return ONLY valid JSON
 2. All string values MUST use double quotes, not single quotes
 3. Use straight quotes (") not curly/smart quotes ("")
 4. For contractions and possessives, use: don't, we're, it's (these are safe in JSON strings)
 5. Do NOT use apostrophes or single quotes for emphasis - use double quotes only
 6. Ensure all strings are properly formatted - no trailing commas
 7. Complete the entire JSON structure - do not truncate
-8. No additional text before or after the JSON code block`;
+8. No additional text before or after the JSON`;
 
     const response = await this.openai.chat.completions.create({
       model: 'gpt-4o',
@@ -295,11 +312,20 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
       ],
     });
 
-    const content = response.choices[0]?.message?.content;
+    let content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No response content from OpenAI');
     }
 
-    return JSON.parse(content);
+    // Clean content
+    content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Failed to parse enhanced model answer JSON:', error);
+      console.log('Raw content:', content);
+      throw new Error('Failed to parse AI response: ' + error.message);
+    }
   }
 }

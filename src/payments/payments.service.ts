@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -11,6 +12,12 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { PaymentStatus } from '@prisma/client';
 
 type PlanKey = 'monthly' | 'quarterly' | 'yearly';
+type PaymentProvider = 'paystack' | 'paddle';
+
+// Countries where Paystack is available and preferred
+const PAYSTACK_COUNTRIES = new Set([
+  'NG', 'GH', 'ZA', 'KE', // Nigeria, Ghana, South Africa, Kenya
+]);
 
 type PaystackInitializeResponse = {
   status: boolean;
@@ -42,13 +49,16 @@ type PaystackVerifyResponse = {
 
 @Injectable()
 export class PaymentsService {
-  private readonly planConfig: Record<PlanKey, { amountKobo: number; durationDays: number }>;
+  private readonly logger = new Logger(PaymentsService.name);
+  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number }>;
+  private readonly paddlePlanConfig: Record<PlanKey, { amountCents: number; durationDays: number; priceId: string }>;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.planConfig = {
+    // Paystack plans (NGN Kobo)
+    this.paystackPlanConfig = {
       monthly: {
         amountKobo: Number(this.configService.get('PAYSTACK_PREMIUM_MONTHLY_AMOUNT_KOBO') || 500000),
         durationDays: Number(this.configService.get('PAYSTACK_PREMIUM_MONTHLY_DURATION_DAYS') || 30),
@@ -62,12 +72,54 @@ export class PaymentsService {
         durationDays: Number(this.configService.get('PAYSTACK_PREMIUM_YEARLY_DURATION_DAYS') || 365),
       },
     };
+
+    // Paddle plans (USD Cents)
+    this.paddlePlanConfig = {
+      monthly: {
+        amountCents: Number(this.configService.get('PADDLE_PREMIUM_MONTHLY_AMOUNT_CENTS') || 999),
+        durationDays: 30,
+        priceId: this.configService.get('PADDLE_MONTHLY_PRICE_ID') || '',
+      },
+      quarterly: {
+        amountCents: Number(this.configService.get('PADDLE_PREMIUM_QUARTERLY_AMOUNT_CENTS') || 2499),
+        durationDays: 90,
+        priceId: this.configService.get('PADDLE_QUARTERLY_PRICE_ID') || '',
+      },
+      yearly: {
+        amountCents: Number(this.configService.get('PADDLE_PREMIUM_YEARLY_AMOUNT_CENTS') || 8999),
+        durationDays: 365,
+        priceId: this.configService.get('PADDLE_YEARLY_PRICE_ID') || '',
+      },
+    };
   }
 
-  getPublicConfig() {
+  getProviderForCountry(countryCode?: string | null): PaymentProvider {
+    if (countryCode && PAYSTACK_COUNTRIES.has(countryCode.toUpperCase())) {
+      return 'paystack';
+    }
+    return 'paddle';
+  }
+
+  getPublicConfig(countryCode?: string | null) {
+    const provider = this.getProviderForCountry(countryCode);
     return {
-      publicKey: this.configService.get<string>('PAYSTACK_PUBLIC_KEY') || null,
-      plans: this.planConfig,
+      provider,
+      paystack: {
+        publicKey: this.configService.get<string>('PAYSTACK_PUBLIC_KEY') || null,
+        plans: this.paystackPlanConfig,
+        currency: 'NGN',
+      },
+      paddle: {
+        clientToken: this.configService.get<string>('PADDLE_CLIENT_TOKEN') || null,
+        environment: this.configService.get<string>('PADDLE_ENVIRONMENT') || 'sandbox',
+        plans: Object.fromEntries(
+          Object.entries(this.paddlePlanConfig).map(([key, val]) => [
+            key,
+            { amountCents: val.amountCents, durationDays: val.durationDays, priceId: val.priceId },
+          ]),
+        ),
+        currency: 'USD',
+      },
     };
   }
 
@@ -86,7 +138,7 @@ export class PaymentsService {
       throw new BadRequestException('User not found');
     }
 
-    const selectedPlan = this.planConfig[plan];
+    const selectedPlan = this.paystackPlanConfig[plan];
     if (!selectedPlan) {
       throw new BadRequestException('Invalid plan selected');
     }
@@ -186,6 +238,7 @@ export class PaymentsService {
           provider: true,
           plan: true,
           amountKobo: true,
+          amountCents: true,
           currency: true,
           reference: true,
           status: true,
@@ -295,7 +348,7 @@ export class PaymentsService {
     }
 
     const plan = verification.metadata?.plan || 'monthly';
-    const configuredPlan = this.planConfig[plan] || this.planConfig.monthly;
+    const configuredPlan = this.paystackPlanConfig[plan] || this.paystackPlanConfig.monthly;
     const requiredAmount = configuredPlan.amountKobo;
 
     if (verification.amount < requiredAmount) {
@@ -381,5 +434,271 @@ export class PaymentsService {
         },
       });
     });
+  }
+
+  // ==========================================
+  // PADDLE METHODS
+  // ==========================================
+
+  async initializePaddleCheckout(userId: string, plan: PlanKey = 'monthly') {
+    const paddleApiKey = this.configService.get<string>('PADDLE_API_KEY');
+    if (!paddleApiKey) {
+      throw new InternalServerErrorException('Paddle is not configured');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, fullName: true, paddleCustomerId: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const selectedPlan = this.paddlePlanConfig[plan];
+    if (!selectedPlan || !selectedPlan.priceId) {
+      throw new BadRequestException('Invalid plan selected or Paddle price not configured');
+    }
+
+    const paddleEnv = this.configService.get<string>('PADDLE_ENVIRONMENT') || 'sandbox';
+    const baseUrl = paddleEnv === 'production'
+      ? 'https://api.paddle.com'
+      : 'https://sandbox-api.paddle.com';
+
+    // Build the transaction request
+    const transactionPayload: Record<string, unknown> = {
+      items: [
+        {
+          price_id: selectedPlan.priceId,
+          quantity: 1,
+        },
+      ],
+      custom_data: {
+        userId: user.id,
+        plan,
+        subscriptionDurationDays: selectedPlan.durationDays,
+      },
+    };
+
+    // If user already has a Paddle customer ID, use it
+    if (user.paddleCustomerId) {
+      transactionPayload.customer_id = user.paddleCustomerId;
+    } else {
+      // Create inline customer
+      transactionPayload.customer = {
+        email: user.email,
+      };
+    }
+
+    const response = await fetch(`${baseUrl}/transactions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${paddleApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(transactionPayload),
+    });
+
+    const result = await response.json() as {
+      data?: {
+        id: string;
+        customer_id?: string;
+        checkout?: { url?: string };
+      };
+      error?: { detail?: string };
+    };
+
+    if (!response.ok || !result.data) {
+      this.logger.error('Paddle transaction creation failed', result);
+      throw new BadRequestException(result.error?.detail || 'Failed to create Paddle transaction');
+    }
+
+    const reference = `paddle_${result.data.id}`;
+
+    // Store paddle customer ID if new
+    if (result.data.customer_id && !user.paddleCustomerId) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { paddleCustomerId: result.data.customer_id },
+      });
+    }
+
+    // Create pending transaction record
+    await this.prisma.paymentTransaction.create({
+      data: {
+        userId,
+        provider: 'paddle',
+        plan,
+        amountCents: selectedPlan.amountCents,
+        currency: 'USD',
+        reference,
+        paddleTransactionId: result.data.id,
+        status: PaymentStatus.PENDING,
+        metadata: {
+          userId,
+          plan,
+          subscriptionDurationDays: selectedPlan.durationDays,
+          paddleTransactionId: result.data.id,
+        },
+      },
+    });
+
+    return {
+      transactionId: result.data.id,
+      checkoutUrl: result.data.checkout?.url || null,
+      reference,
+      amountCents: selectedPlan.amountCents,
+      currency: 'USD',
+      plan,
+    };
+  }
+
+  async handlePaddleWebhook(rawBody: Buffer | undefined, signature: string | undefined) {
+    const webhookSecret = this.configService.get<string>('PADDLE_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+      throw new InternalServerErrorException('Paddle webhook secret is not configured');
+    }
+
+    if (!rawBody || !signature) {
+      throw new UnauthorizedException('Missing webhook signature');
+    }
+
+    // Paddle uses h1= signature format: ts=timestamp;h1=hash
+    const parts = signature.split(';');
+    const tsPart = parts.find(p => p.startsWith('ts='));
+    const h1Part = parts.find(p => p.startsWith('h1='));
+
+    if (!tsPart || !h1Part) {
+      throw new UnauthorizedException('Invalid webhook signature format');
+    }
+
+    const ts = tsPart.replace('ts=', '');
+    const h1 = h1Part.replace('h1=', '');
+    const signedPayload = `${ts}:${rawBody.toString('utf-8')}`;
+    const expectedHash = createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
+
+    if (expectedHash !== h1) {
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+
+    const event = JSON.parse(rawBody.toString('utf-8')) as {
+      event_type?: string;
+      data?: {
+        id?: string;
+        status?: string;
+        customer_id?: string;
+        custom_data?: {
+          userId?: string;
+          plan?: PlanKey;
+          subscriptionDurationDays?: number;
+        };
+        details?: {
+          totals?: { total?: string; currency_code?: string };
+        };
+        billed_at?: string;
+      };
+    };
+
+    this.logger.log(`Paddle webhook received: ${event.event_type}`);
+
+    if (event.event_type !== 'transaction.completed' || !event.data?.id) {
+      return { received: true };
+    }
+
+    const transactionId = event.data.id;
+    const customData = event.data.custom_data;
+    const userId = customData?.userId;
+
+    if (!userId) {
+      this.logger.warn('Paddle webhook missing userId in custom_data');
+      return { received: true };
+    }
+
+    const plan = customData?.plan || 'monthly';
+    const configuredPlan = this.paddlePlanConfig[plan] || this.paddlePlanConfig.monthly;
+    const paymentDate = event.data.billed_at ? new Date(event.data.billed_at) : new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      // Check if we already processed this
+      const existingTransaction = await tx.paymentTransaction.findUnique({
+        where: { paddleTransactionId: transactionId },
+      });
+
+      if (existingTransaction?.status === PaymentStatus.SUCCESS) {
+        return;
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { id: true, subscriptionExpiresAt: true },
+      });
+
+      if (!user) {
+        this.logger.warn(`Paddle webhook: user ${userId} not found`);
+        return;
+      }
+
+      const subscriptionStart = user.subscriptionExpiresAt && user.subscriptionExpiresAt > paymentDate
+        ? user.subscriptionExpiresAt
+        : paymentDate;
+      const subscriptionEnd = new Date(subscriptionStart);
+      subscriptionEnd.setDate(subscriptionEnd.getDate() + configuredPlan.durationDays);
+
+      // Update user subscription
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionTier: 'premium',
+          subscriptionExpiresAt: subscriptionEnd,
+          paddleCustomerId: event.data?.customer_id || undefined,
+        },
+      });
+
+      const amountCents = event.data?.details?.totals?.total
+        ? Math.round(Number(event.data.details.totals.total))
+        : configuredPlan.amountCents;
+
+      const reference = `paddle_${transactionId}`;
+
+      // Upsert payment transaction
+      await tx.paymentTransaction.upsert({
+        where: { paddleTransactionId: transactionId },
+        update: {
+          status: PaymentStatus.SUCCESS,
+          paidAt: paymentDate,
+          amountCents,
+          currency: event.data?.details?.totals?.currency_code || 'USD',
+          subscriptionStartsAt: subscriptionStart,
+          subscriptionEndsAt: subscriptionEnd,
+          metadata: {
+            ...(typeof existingTransaction?.metadata === 'object' && existingTransaction?.metadata
+              ? (existingTransaction.metadata as Record<string, unknown>)
+              : {}),
+            verifiedAt: new Date().toISOString(),
+            paddleEventType: event.event_type,
+          },
+        },
+        create: {
+          userId,
+          provider: 'paddle',
+          plan,
+          amountCents,
+          currency: event.data?.details?.totals?.currency_code || 'USD',
+          reference,
+          paddleTransactionId: transactionId,
+          status: PaymentStatus.SUCCESS,
+          paidAt: paymentDate,
+          subscriptionStartsAt: subscriptionStart,
+          subscriptionEndsAt: subscriptionEnd,
+          metadata: {
+            userId,
+            plan,
+            paddleEventType: event.event_type,
+          },
+        },
+      });
+    });
+
+    return { received: true };
   }
 }

@@ -352,6 +352,7 @@ async function main() {
         id: q.id,
         taskType: q.taskType as any,
         subType: q.subType ?? null,
+        examType: ('examType' in q && q.examType === 'GENERAL') ? 'GENERAL' : 'ACADEMIC',
         prompt: q.prompt,
         imageUrl,
         isActive: true,

@@ -61,6 +61,7 @@ export class AuthController {
       targetBandScore: req.user.targetBandScore,
       targetExamDate: req.user.targetExamDate,
       nativeLanguage: req.user.nativeLanguage,
+      examType: req.user.examType,
       subscriptionTier: req.user.subscriptionTier,
       subscriptionExpiresAt: req.user.subscriptionExpiresAt,
       dailySessionsUsed: req.user.dailySessionsUsed,

@@ -25,8 +25,13 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Get('config')
-  getPublicConfig() {
-    return this.paymentsService.getPublicConfig();
+  getPublicConfig(@Query('country') country?: string) {
+    return this.paymentsService.getPublicConfig(country || null);
+  }
+
+  @Get('provider')
+  getProvider(@Query('country') country?: string) {
+    return { provider: this.paymentsService.getProviderForCountry(country || null) };
   }
 
   @Get('billing/history')
@@ -42,6 +47,10 @@ export class PaymentsController {
       offset ? Number(offset) : 0,
     );
   }
+
+  // ==========================================
+  // PAYSTACK ENDPOINTS
+  // ==========================================
 
   @Post('paystack/initialize')
   @UseGuards(AuthGuard('jwt'))
@@ -68,5 +77,27 @@ export class PaymentsController {
     @Headers('x-paystack-signature') signature?: string,
   ) {
     return this.paymentsService.handlePaystackWebhook(req.rawBody, signature);
+  }
+
+  // ==========================================
+  // PADDLE ENDPOINTS
+  // ==========================================
+
+  @Post('paddle/checkout')
+  @UseGuards(AuthGuard('jwt'))
+  async initializePaddleCheckout(
+    @CurrentUser() user: User,
+    @Body() dto: InitializePaymentDto,
+  ) {
+    return this.paymentsService.initializePaddleCheckout(user.id, dto?.plan || 'monthly');
+  }
+
+  @Post('paddle/webhook')
+  @HttpCode(200)
+  async paddleWebhook(
+    @Req() req: Request & { rawBody?: Buffer },
+    @Headers('paddle-signature') signature?: string,
+  ) {
+    return this.paymentsService.handlePaddleWebhook(req.rawBody, signature);
   }
 }

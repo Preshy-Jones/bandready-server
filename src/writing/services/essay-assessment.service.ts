@@ -10,8 +10,12 @@ import {
   TASK1_SYSTEM_PROMPT,
   generateTask1AssessmentPrompt,
 } from '../prompts/task1-assessment.prompt';
+import {
+  TASK1_GENERAL_SYSTEM_PROMPT,
+  generateTask1GeneralAssessmentPrompt,
+} from '../prompts/task1-general-assessment.prompt';
 import { EssayFeedbackResponse } from '../dto/essay-feedback.dto';
-import { TaskType } from '@prisma/client';
+import { TaskType, ExamType } from '@prisma/client';
 
 @Injectable()
 export class EssayAssessmentService {
@@ -40,27 +44,41 @@ export class EssayAssessmentService {
     questionType: string,
     wordCount: number,
     timeSpent: number,
+    examType: ExamType = 'ACADEMIC',
   ): Promise<EssayFeedbackResponse> {
-    this.logger.log(`Assessing ${taskType} essay with ${wordCount} words`);
+    this.logger.log(`Assessing ${taskType} (${examType}) essay with ${wordCount} words`);
 
-    const systemPrompt =
-      taskType === 'TASK1' ? TASK1_SYSTEM_PROMPT : WRITING_SYSTEM_PROMPT;
-    const userPrompt =
-      taskType === 'TASK1'
-        ? generateTask1AssessmentPrompt({
-            question,
-            questionType,
-            essayText,
-            wordCount,
-            timeSpent,
-          })
-        : generateTask2AssessmentPrompt({
-            question,
-            questionType,
-            essayText,
-            wordCount,
-            timeSpent,
-          });
+    let systemPrompt: string;
+    let userPrompt: string;
+
+    if (taskType === 'TASK2') {
+      systemPrompt = WRITING_SYSTEM_PROMPT;
+      userPrompt = generateTask2AssessmentPrompt({
+        question,
+        questionType,
+        essayText,
+        wordCount,
+        timeSpent,
+      });
+    } else if (examType === 'GENERAL') {
+      systemPrompt = TASK1_GENERAL_SYSTEM_PROMPT;
+      userPrompt = generateTask1GeneralAssessmentPrompt({
+        question,
+        questionType,
+        essayText,
+        wordCount,
+        timeSpent,
+      });
+    } else {
+      systemPrompt = TASK1_SYSTEM_PROMPT;
+      userPrompt = generateTask1AssessmentPrompt({
+        question,
+        questionType,
+        essayText,
+        wordCount,
+        timeSpent,
+      });
+    }
 
     try {
       const response = await this.anthropic.messages.create({
@@ -225,6 +243,7 @@ export class EssayAssessmentService {
       submission.question.subType || 'general',
       submission.wordCount,
       submission.timeSpentSeconds,
+      submission.question.examType,
     );
 
     // Save the feedback
