@@ -260,3 +260,5 @@ Provide a detailed assessment in the following JSON format:
   "mispronouncedWords": []
 }`, part, question, transcript, examType, nativeLanguage)
 }
+
+// examTypeQueryAdded - supports ACADEMIC and GENERAL_TRAINING
