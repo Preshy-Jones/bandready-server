@@ -18,6 +18,15 @@ export const task1Questions = [
       'The line graph below shows the percentage of tourists to England who visited four different attractions in Brighton.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
     imageUrl: "/images/task1/brighton_tourists.png",
   },
+  {
+    id: 't1-line-003',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'line_graph',
+    prompt:
+      'The line graph below shows the average monthly temperatures in three major cities over the course of a year.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Line+Graph:+Monthly+Temperatures+in+Three+Cities",
+  },
 
   // BAR CHARTS
   {
@@ -38,6 +47,15 @@ export const task1Questions = [
       'The bar chart below shows the top ten countries for the production and consumption of electricity in 2014.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
     imageUrl: "/images/task1/electricity.png",
   },
+  {
+    id: 't1-bar-003',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'bar_chart',
+    prompt:
+      'The bar chart below shows the percentage of men and women in different age groups who did regular physical activity in 2010.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Bar+Chart:+Physical+Activity+by+Age+and+Gender",
+  },
 
   // PIE CHARTS
   {
@@ -49,6 +67,15 @@ export const task1Questions = [
       'The pie charts below show the average household expenditures in Japan and Malaysia in the year 2010.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
     imageUrl: "/images/task1/japan_malaysia_pie.png",
   },
+  {
+    id: 't1-pie-002',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'pie_chart',
+    prompt:
+      'The pie charts below show the proportion of energy produced from different sources in a country in 1985 and 2005.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Pie+Charts:+Energy+Sources+1985+vs+2005",
+  },
 
   // TABLES
   {
@@ -59,6 +86,15 @@ export const task1Questions = [
     prompt:
       'The table below shows the numbers of visitors to Ashdown Museum during the year before and the year after it was refurbished. The charts show the result of surveys asking visitors how satisfied they were with their visit, during the same two periods.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
     imageUrl: "/images/task1/ashdown_museum.png",
+  },
+  {
+    id: 't1-table-002',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'table',
+    prompt:
+      'The table below gives information about underground railway systems in six cities.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Table:+Underground+Railway+Systems+in+Six+Cities",
   },
 
   // PROCESS DIAGRAMS
@@ -80,6 +116,15 @@ export const task1Questions = [
       'The diagrams below show the life cycle of a species of large fish called the salmon.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
     imageUrl: "/images/task1/salmon_life_cycle.png",
   },
+  {
+    id: 't1-process-003',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'process',
+    prompt:
+      'The diagrams below show the stages and equipment used in the process of making cement, and how cement is then used in the production of concrete.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Process:+Cement+and+Concrete+Production",
+  },
 
   // MAPS
   {
@@ -90,6 +135,15 @@ export const task1Questions = [
     prompt:
       'The maps below show the centre of a small town called Islip as it is now, and plans for its development.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
     imageUrl: "/images/task1/islip_maps.png",
+  },
+  {
+    id: 't1-map-002',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'map',
+    prompt:
+      'The maps below show a university campus in 2000 and in the present day.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Maps:+University+Campus+2000+vs+Now",
   },
 
   // OFFICIAL IELTS ACADEMIC SAMPLE TASKS (IELTS.org sample tasks PDF)
@@ -153,6 +207,15 @@ export const task1Questions = [
       'Work is being done on the street where you live, and the noise is severely disturbing you.\n\nWrite a letter of complaint to your local council. In your letter:\n• state where you live and describe the problem\n• explain how the noise affects you\n• suggest what action the council should take',
     imageUrl: null,
   },
+  {
+    id: 't1-general-formal-004',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'formal_letter',
+    prompt:
+      'You travelled by plane last week, but your suitcase did not arrive at the airport.\n\nWrite a letter to the airline. In your letter:\n• describe your flight and what happened\n• explain what was in your suitcase\n• say what action you would like the airline to take',
+    imageUrl: null,
+  },
 
   // SEMI-FORMAL LETTERS
   {
@@ -182,6 +245,15 @@ export const task1Questions = [
       'You live in a room in college which you share with another student. However, there are many problems with this arrangement, and you find it very difficult to study.\n\nWrite a letter to the accommodation officer at the college. In your letter:\n• describe the situation\n• explain your problems and why it is difficult to work\n• say what kind of accommodation you would prefer',
     imageUrl: null,
   },
+  {
+    id: 't1-general-semi-004',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'semi_formal_letter',
+    prompt:
+      'Your local library is asking people for feedback on its services.\n\nWrite a letter to the library manager. In your letter:\n• say what you like about the library\n• explain what changes would make it better\n• describe any additional services you would like the library to provide',
+    imageUrl: null,
+  },
 
   // INFORMAL LETTERS
   {
@@ -209,6 +281,15 @@ export const task1Questions = [
     subType: 'informal_letter',
     prompt:
       'A friend has written to you asking for advice about a problem at work. You have had a similar problem in the past.\n\nWrite a reply to your friend. In your letter:\n• tell your friend you understand the problem\n• explain what happened to you in the past\n• suggest possible solutions to the problem',
+    imageUrl: null,
+  },
+  {
+    id: 't1-general-informal-004',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'informal_letter',
+    prompt:
+      'A friend from another country is planning to visit your town.\n\nWrite a letter to your friend. In your letter:\n• suggest where your friend could stay\n• recommend some places your friend should visit\n• explain what preparations your friend should make before arriving',
     imageUrl: null,
   },
 ];

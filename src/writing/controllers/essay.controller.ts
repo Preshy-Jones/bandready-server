@@ -41,6 +41,7 @@ export class EssayController {
     @CurrentUser() user: any,
     @Param('taskType') taskType: string,
     @Query('subType') subType?: string,
+    @Query('examType') queryExamType?: string,
   ) {
     const fullUser = await this.prisma.user.findUnique({
       where: { id: user.id },
@@ -50,7 +51,7 @@ export class EssayController {
     const where: any = {
       taskType: taskType.toUpperCase() as TaskType,
       isActive: true,
-      examType: fullUser?.examType || 'ACADEMIC',
+      examType: queryExamType ? queryExamType.toUpperCase() : (fullUser?.examType || 'ACADEMIC'),
     };
 
     if (subType) {

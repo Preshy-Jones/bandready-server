@@ -23,6 +23,10 @@ const part1Questions = [
   { topic: 'Accommodation', questionText: 'How long have you lived there?', difficultyLevel: 'easy' },
   { topic: 'Accommodation', questionText: 'What do you like about living there?', difficultyLevel: 'medium' },
   { topic: 'Accommodation', questionText: 'What sort of accommodation would you most like to live in?', difficultyLevel: 'medium' },
+  { topic: 'Accommodation', questionText: 'Which room does your family spend most of the time in?', difficultyLevel: 'easy' },
+  { topic: 'Accommodation', questionText: 'What would you like to change about your home?', difficultyLevel: 'medium' },
+  { topic: 'Accommodation', questionText: 'Do you plan to live there for a long time?', difficultyLevel: 'medium' },
+  { topic: 'Accommodation', questionText: 'What kind of accommodation is most common in your city?', difficultyLevel: 'medium' },
   
   // Topic: Work
   { topic: 'Work', questionText: 'What is your job?', difficultyLevel: 'easy' },
@@ -67,6 +71,48 @@ const part1Questions = [
   { topic: 'Reading', questionText: 'What kind of books do you like to read?', difficultyLevel: 'easy' },
   { topic: 'Reading', questionText: 'Did you enjoy reading when you were a child?', difficultyLevel: 'medium' },
   { topic: 'Reading', questionText: 'Do you prefer reading paper books or electronic books?', difficultyLevel: 'medium' },
+
+  // Topic: Books
+  { topic: 'Books', questionText: 'Do you often read books?', difficultyLevel: 'easy' },
+  { topic: 'Books', questionText: 'What kinds of books are most popular in your country?', difficultyLevel: 'medium' },
+  { topic: 'Books', questionText: 'Do you think reading is important for children?', difficultyLevel: 'medium' },
+  { topic: 'Books', questionText: 'Have your reading habits changed over time?', difficultyLevel: 'medium' },
+
+  // Topic: Art
+  { topic: 'Art', questionText: 'Do you like art?', difficultyLevel: 'easy' },
+  { topic: 'Art', questionText: 'Did you enjoy art classes at school?', difficultyLevel: 'easy' },
+  { topic: 'Art', questionText: 'Is art popular in your country?', difficultyLevel: 'medium' },
+  { topic: 'Art', questionText: 'Do you think anyone can become an artist?', difficultyLevel: 'hard' },
+
+  // Topic: Childhood
+  { topic: 'Childhood', questionText: 'Did you enjoy your childhood?', difficultyLevel: 'easy' },
+  { topic: 'Childhood', questionText: 'What did you enjoy doing as a child?', difficultyLevel: 'easy' },
+  { topic: 'Childhood', questionText: 'Did you have a lot of friends when you were a child?', difficultyLevel: 'medium' },
+  { topic: 'Childhood', questionText: 'What was your favourite game when you were young?', difficultyLevel: 'medium' },
+
+  // Topic: Culture
+  { topic: 'Culture', questionText: 'What traditions are important in your culture?', difficultyLevel: 'medium' },
+  { topic: 'Culture', questionText: 'Do young people in your country follow traditional customs?', difficultyLevel: 'medium' },
+  { topic: 'Culture', questionText: 'How do people in your country usually celebrate national festivals?', difficultyLevel: 'medium' },
+  { topic: 'Culture', questionText: 'Is it important to preserve cultural traditions?', difficultyLevel: 'hard' },
+
+  // Topic: Education
+  { topic: 'Education', questionText: 'What did you like most about your school?', difficultyLevel: 'easy' },
+  { topic: 'Education', questionText: 'Who was your favourite teacher?', difficultyLevel: 'easy' },
+  { topic: 'Education', questionText: 'Do you prefer studying alone or with others?', difficultyLevel: 'medium' },
+  { topic: 'Education', questionText: 'What changes would you like to see in the education system?', difficultyLevel: 'hard' },
+
+  // Topic: Experience
+  { topic: 'Experience', questionText: 'Do you like trying new things?', difficultyLevel: 'easy' },
+  { topic: 'Experience', questionText: 'What is a memorable experience you have had recently?', difficultyLevel: 'medium' },
+  { topic: 'Experience', questionText: 'Do you learn more from success or failure?', difficultyLevel: 'medium' },
+  { topic: 'Experience', questionText: 'How do experiences change people over time?', difficultyLevel: 'hard' },
+
+  // Topic: Achievement
+  { topic: 'Achievement', questionText: 'What achievement are you most proud of?', difficultyLevel: 'medium' },
+  { topic: 'Achievement', questionText: 'Do you set goals for yourself?', difficultyLevel: 'medium' },
+  { topic: 'Achievement', questionText: 'How do people usually celebrate achievements in your country?', difficultyLevel: 'medium' },
+  { topic: 'Achievement', questionText: 'Is success more about hard work or talent?', difficultyLevel: 'hard' },
   
   // Topic: Music
   { topic: 'Music', questionText: 'What type of music do you like?', difficultyLevel: 'easy' },
@@ -220,6 +266,42 @@ const part2Questions = [
     ],
     difficultyLevel: 'medium',
   },
+  // Topic: Education
+  {
+    topic: 'Education',
+    questionText: 'Describe a subject you enjoyed studying at school.',
+    cueCardPoints: [
+      'What the subject was',
+      'Who taught you',
+      'Why you enjoyed learning it',
+      'Explain how it has helped you in your life'
+    ],
+    difficultyLevel: 'medium',
+  },
+  // Topic: Accommodation
+  {
+    topic: 'Accommodation',
+    questionText: 'Describe an ideal home that you would like to live in.',
+    cueCardPoints: [
+      'Where it would be',
+      'What it would look like',
+      'Who you would like to live with',
+      'Explain why this home would be ideal for you'
+    ],
+    difficultyLevel: 'medium',
+  },
+  // Topic: Culture
+  {
+    topic: 'Culture',
+    questionText: 'Describe a traditional event or festival in your country.',
+    cueCardPoints: [
+      'What the event is',
+      'When and where it takes place',
+      'What people usually do during the event',
+      'Explain why this event is important in your culture'
+    ],
+    difficultyLevel: 'medium',
+  },
 ];
 
 const part3Questions = [
@@ -256,15 +338,40 @@ const part3Questions = [
   { topic: 'Weather', questionText: 'What effects might climate change have on your country?', difficultyLevel: 'hard' },
   
   // Topic: National Celebrations
-  { topic: 'Culture', questionText: 'What days are important in your country?', difficultyLevel: 'medium' },
-  { topic: 'Culture', questionText: 'Why is it important to have national celebrations?', difficultyLevel: 'medium' },
-  { topic: 'Culture', questionText: 'How is the way your national celebrations are celebrated now different from the way they were celebrated in the past?', difficultyLevel: 'hard' },
-  { topic: 'Culture', questionText: 'Do you think any new national celebrations will come into being in the future?', difficultyLevel: 'hard' },
+  { topic: 'Culture', questionText: 'What days are important in your country?', difficultyLevel: 'medium', relatedPart2Topic: 'Culture' },
+  { topic: 'Culture', questionText: 'Why is it important to have national celebrations?', difficultyLevel: 'medium', relatedPart2Topic: 'Culture' },
+  { topic: 'Culture', questionText: 'How is the way your national celebrations are celebrated now different from the way they were celebrated in the past?', difficultyLevel: 'hard', relatedPart2Topic: 'Culture' },
+  { topic: 'Culture', questionText: 'Do you think any new national celebrations will come into being in the future?', difficultyLevel: 'hard', relatedPart2Topic: 'Culture' },
   
   // Topic: Art
-  { topic: 'Art', questionText: 'Do you think art is important for society? Why?', difficultyLevel: 'medium' },
-  { topic: 'Art', questionText: 'Should governments spend money on art?', difficultyLevel: 'hard' },
-  { topic: 'Art', questionText: 'What makes a piece of art valuable?', difficultyLevel: 'hard' },
+  { topic: 'Art', questionText: 'Do you think art is important for society? Why?', difficultyLevel: 'medium', relatedPart2Topic: 'Art' },
+  { topic: 'Art', questionText: 'Should governments spend money on art?', difficultyLevel: 'hard', relatedPart2Topic: 'Art' },
+  { topic: 'Art', questionText: 'What makes a piece of art valuable?', difficultyLevel: 'hard', relatedPart2Topic: 'Art' },
+
+  // Topic: Accommodation
+  { topic: 'Accommodation', questionText: 'How does housing design affect people\'s quality of life?', difficultyLevel: 'hard', relatedPart2Topic: 'Accommodation' },
+  { topic: 'Accommodation', questionText: 'Should governments invest more in affordable housing?', difficultyLevel: 'hard', relatedPart2Topic: 'Accommodation' },
+  { topic: 'Accommodation', questionText: 'What are the advantages and disadvantages of living in apartment blocks?', difficultyLevel: 'medium', relatedPart2Topic: 'Accommodation' },
+
+  // Topic: Achievement
+  { topic: 'Achievement', questionText: 'How should schools reward students\' achievements?', difficultyLevel: 'medium', relatedPart2Topic: 'Achievement' },
+  { topic: 'Achievement', questionText: 'Do you think competition is necessary to achieve success?', difficultyLevel: 'hard', relatedPart2Topic: 'Achievement' },
+  { topic: 'Achievement', questionText: 'Which is more important for achievement: natural talent or consistent effort?', difficultyLevel: 'hard', relatedPart2Topic: 'Achievement' },
+
+  // Topic: Books
+  { topic: 'Books', questionText: 'Do you think reading habits are changing among young people?', difficultyLevel: 'medium', relatedPart2Topic: 'Books' },
+  { topic: 'Books', questionText: 'How important is literature in modern education?', difficultyLevel: 'hard', relatedPart2Topic: 'Books' },
+  { topic: 'Books', questionText: 'Will printed books disappear in the future?', difficultyLevel: 'hard', relatedPart2Topic: 'Books' },
+
+  // Topic: Childhood
+  { topic: 'Childhood', questionText: 'How has childhood changed compared with the past?', difficultyLevel: 'medium', relatedPart2Topic: 'Childhood' },
+  { topic: 'Childhood', questionText: 'Do children today have too much pressure from school and parents?', difficultyLevel: 'hard', relatedPart2Topic: 'Childhood' },
+  { topic: 'Childhood', questionText: 'What kinds of activities best help children develop social skills?', difficultyLevel: 'medium', relatedPart2Topic: 'Childhood' },
+
+  // Topic: Experience
+  { topic: 'Experience', questionText: 'Why do many people value practical experience more than theoretical knowledge?', difficultyLevel: 'medium', relatedPart2Topic: 'Experience' },
+  { topic: 'Experience', questionText: 'How can traveling to different places broaden people\'s perspectives?', difficultyLevel: 'medium', relatedPart2Topic: 'Experience' },
+  { topic: 'Experience', questionText: 'Should young people be encouraged to gain work experience before university?', difficultyLevel: 'hard', relatedPart2Topic: 'Experience' },
   
   // Topic: Work
   { topic: 'Work', questionText: 'What are the advantages and disadvantages of working from home?', difficultyLevel: 'medium' },
@@ -319,6 +426,7 @@ async function main() {
         part: 3,
         topic: q.topic,
         questionText: q.questionText,
+        relatedPart2Topic: q.relatedPart2Topic,
         difficultyLevel: q.difficultyLevel,
         isActive: true,
       },
