@@ -9,6 +9,7 @@ interface QuestionSequence {
   part1: string[]; // 4 question IDs
   part2: string;   // 1 question ID
   part3: string[]; // 3 question IDs
+  isDynamicPart3Generated?: boolean;
 }
 
 @Injectable()
@@ -203,9 +204,63 @@ export class MockTestService {
       };
     }
 
-    // Get next question ID from pre-selected sequence
+    // Get next question ID from pre-selected sequence OR generate dynamically for Part 3
     const sequence = mockTest.questionSequence as any as QuestionSequence;
     let nextQuestionId: string;
+
+    // --- DYNAMIC PART 3 GENERATION ---
+    if (mockTest.currentPart === 2 && nextPart === 3) {
+      if (!session.completedAt || !session.transcript) {
+        // Background AI processing hasn't finished transcribing Part 2 yet.
+        console.log('[MockTest] Part 2 processing not finished. Telling frontend to poll...');
+        return {
+          isComplete: false,
+          isProcessing: true, // Signal to frontend to wait and poll again
+          mockTestState: {
+            id: mockTest.id,
+            timingMode: mockTest.timingMode,
+            currentPart: mockTest.currentPart,
+            currentQuestion: mockTest.currentQuestion,
+            status: mockTest.status,
+          },
+        };
+      }
+
+      // Check if we've already generated dynamic questions for this mock test
+      // by seeing if the sequence.part3 questions are standard or dynamic.
+      // We'll generate them once and save them to the DB.
+      if (sequence.part3 && sequence.part3.length === 3 && !sequence.isDynamicPart3Generated) {
+        console.log('[MockTest] Generating dynamic Part 3 questions based on transcript...');
+        const dynamicQuestions = await this.speechAnalysis.generateDynamicPart3Questions(
+          mockTest.part2Topic || 'Unknown Topic',
+          session.transcript
+        );
+        
+        // Save to DB as temporary/dynamic questions
+        const savedQuestions: string[] = [];
+        for (const q of dynamicQuestions) {
+          const sq = await this.prisma.speakingQuestion.create({
+            data: {
+              part: 3,
+              topic: mockTest.part2Topic || 'Dynamic AI Topic',
+              questionText: q,
+              isActive: true,
+              difficultyLevel: 'ADVANCED',
+            }
+          });
+          savedQuestions.push(sq.id);
+        }
+
+        // Update the sequence
+        sequence.part3 = savedQuestions;
+        sequence.isDynamicPart3Generated = true;
+        await this.prisma.mockTest.update({
+          where: { id: mockTestId },
+          data: { questionSequence: sequence as any }
+        });
+      }
+    }
+    // ---------------------------------
 
     if (nextPart === 1) {
       nextQuestionId = sequence.part1[nextQuestionNumber - 1];
@@ -261,6 +316,16 @@ export class MockTestService {
    * Finalize mock test - calculate overall score and generate analysis
    */
   async finalizeMockTest(mockTestId: string, userId: string) {
+    // 1. Wait for any pending background processing jobs (up to 30 seconds)
+    for (let i = 0; i < 15; i++) {
+      const pendingCount = await this.prisma.practiceSession.count({
+        where: { mockTestId, completedAt: null }
+      });
+      if (pendingCount === 0) break;
+      console.log(`[MockTest] Waiting for ${pendingCount} pending sessions to complete...`);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2s
+    }
+
     const mockTest = await this.prisma.mockTest.findUnique({
       where: { id: mockTestId },
       include: {
@@ -277,7 +342,7 @@ export class MockTestService {
     }
 
     if (mockTest.sessions.length === 0) {
-      throw new BadRequestException('No completed sessions found');
+      throw new BadRequestException('No completed sessions found. AI processing might have failed.');
     }
 
     // Calculate overall score (average of all session scores)
@@ -513,12 +578,15 @@ Return ONLY valid JSON.`;
     // Pick a random topic
     const selectedTopic = topicsWithEnoughQuestions[Math.floor(Math.random() * topicsWithEnoughQuestions.length)];
 
-    // Get 4 questions from that topic
+    // Get 4 questions from that topic in sequential order
     const questions = await this.prisma.speakingQuestion.findMany({
       where: {
         part: 1,
         topic: selectedTopic.topic,
         isActive: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
       },
       take: 4,
     });
@@ -556,6 +624,9 @@ Return ONLY valid JSON.`;
         relatedPart2Topic: part2Topic,
         isActive: true,
       },
+      orderBy: {
+        createdAt: 'asc',
+      },
       take: 3,
     });
 
@@ -567,6 +638,9 @@ Return ONLY valid JSON.`;
           part: 3,
           topic: part2Topic,
           isActive: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
         },
         take: 3,
       });

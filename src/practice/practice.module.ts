@@ -7,9 +7,14 @@ import { MockTestService } from './mock-test.service';
 import { SpeechAnalysisService } from './services/speech-analysis.service';
 import { S3Service } from './services/s3.service';
 import { UsersModule } from '../users/users.module';
+import { BullModule } from '@nestjs/bullmq';
+import { AudioProcessingProcessor } from './services/audio-processing.processor';
 
 @Module({
   imports: [
+    BullModule.registerQueue({
+      name: 'audio-processing',
+    }),
     MulterModule.register({
       limits: {
         fileSize: 50 * 1024 * 1024, // 50MB max
@@ -18,6 +23,12 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [PracticeController, MockTestController],
-  providers: [PracticeService, MockTestService, SpeechAnalysisService, S3Service],
+  providers: [
+    PracticeService, 
+    MockTestService, 
+    SpeechAnalysisService, 
+    S3Service,
+    AudioProcessingProcessor,
+  ],
 })
 export class PracticeModule {}

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { SYSTEM_PROMPT, generateAssessmentPrompt, generateModelAnswerPrompt } from '../prompts/assessment-prompt';
+import { getDynamicPart3Prompt } from '../prompts/dynamic-part3.prompt';
 
 export interface AudioMetrics {
   durationSeconds: number;
@@ -326,6 +327,38 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
       console.error('Failed to parse enhanced model answer JSON:', error);
       console.log('Raw content:', content);
       throw new Error('Failed to parse AI response: ' + error.message);
+    }
+  }
+
+  async generateDynamicPart3Questions(part2Topic: string, userTranscript: string): Promise<string[]> {
+    const prompt = getDynamicPart3Prompt(part2Topic, userTranscript);
+
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o', // or gpt-4-turbo
+      max_tokens: 1000,
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    let content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response content from OpenAI for dynamic Part 3 generation');
+    }
+
+    // Clean markdown
+    content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+
+    try {
+      const parsed = JSON.parse(content);
+      if (!Array.isArray(parsed) || parsed.length !== 3) {
+        throw new Error('AI did not return exactly 3 questions');
+      }
+      return parsed;
+    } catch (error) {
+      console.error('Failed to parse dynamic Part 3 questions JSON:', error);
+      console.log('Raw content:', content);
+      throw new Error('Failed to parse dynamic questions response: ' + error.message);
     }
   }
 }

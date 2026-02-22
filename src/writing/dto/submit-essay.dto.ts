@@ -1,8 +1,8 @@
-import { IsString, IsInt, IsEnum, IsOptional, IsUUID, MinLength, Min } from 'class-validator';
+import { IsString, IsInt, IsEnum, IsOptional, MinLength, Min } from 'class-validator';
 import { TaskType, SessionType } from '@prisma/client';
 
 export class SubmitEssayDto {
-  @IsUUID()
+  @IsString()
   questionId: string;
 
   @IsString()
@@ -28,10 +28,10 @@ export class GetQuestionsDto {
 }
 
 export class SubmitDiagnosticDto {
-  @IsUUID()
+  @IsString()
   task1QuestionId: string;
 
-  @IsUUID()
+  @IsString()
   task2QuestionId: string;
 
   @IsString()

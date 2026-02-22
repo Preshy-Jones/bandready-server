@@ -4,6 +4,8 @@ import { SpeechAnalysisService } from './services/speech-analysis.service';
 import { S3Service } from './services/s3.service';
 import { UsersService } from '../users/users.service';
 import { Prisma } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class PracticeService {
@@ -12,6 +14,7 @@ export class PracticeService {
     private readonly speechAnalysis: SpeechAnalysisService,
     private readonly s3Service: S3Service,
     private readonly usersService: UsersService,
+    @InjectQueue('audio-processing') private readonly audioQueue: Queue,
   ) {}
 
   // ========================
@@ -96,86 +99,32 @@ export class PracticeService {
       throw new BadRequestException('Session not found');
     }
 
-    // Upload audio to S3 (skip if S3 not configured)
-    let audioKey: string | null = null;
-    try {
-      audioKey = await this.s3Service.uploadAudio(audioBuffer, userId, sessionId);
-    } catch (error) {
-      console.warn('S3 upload failed (S3 may not be configured):', error.message);
-      // Continue without audio storage in dev mode
-    }
+    // Convert Buffer to base64 for strictly serializable job data
+    const audioBufferBase64 = audioBuffer.toString('base64');
 
-    // Transcribe audio using OpenAI Whisper
-    const transcription = await this.speechAnalysis.transcribeAudio(audioBuffer);
-    
-    // Calculate metrics from transcription
-    const audioMetrics = this.speechAnalysis.calculateAudioMetrics(transcription);
-
-    // Get AI assessment using Claude
-    const assessment = await this.speechAnalysis.assessSpeech({
-      part: session.part as 1 | 2 | 3,
-      question: session.question.questionText,
-      transcript: transcription.text,
-      audioMetrics,
-      cueCardPoints: session.question.cueCardPoints as string[] | undefined,
-    });
-
-    // Update session with results
-    const updatedSession = await this.prisma.practiceSession.update({
-      where: { id: sessionId },
-      data: {
-        audioUrl: audioKey,
-        audioDurationSeconds: audioMetrics.durationSeconds,
-        transcript: transcription.text,
-        transcriptWithTimestamps: transcription.words as Prisma.InputJsonValue,
-        
-        overallBandScore: assessment.scores.overall,
-        fluencyCoherenceScore: assessment.scores.fluency,
-        lexicalResourceScore: assessment.scores.lexical,
-        grammarAccuracyScore: assessment.scores.grammar,
-        pronunciationScore: assessment.scores.pronunciation,
-        
-        wordsPerMinute: audioMetrics.wordsPerMinute,
-        totalWords: audioMetrics.totalWords,
-        fillerWordCount: audioMetrics.fillerWords.reduce((sum, f) => sum + f.count, 0),
-        fillerWordsDetail: audioMetrics.fillerWords as Prisma.InputJsonValue,
-        pauseCount: audioMetrics.pauseCount,
-        longPauseCount: audioMetrics.longPauseCount,
-        
-        feedbackFluency: assessment.feedback.fluency,
-        feedbackVocabulary: assessment.feedback.vocabulary,
-        feedbackGrammar: assessment.feedback.grammar,
-        feedbackPronunciation: assessment.feedback.pronunciation,
-        feedbackOverall: assessment.feedback.overall,
-        
-        vocabularySuggestions: assessment.suggestions.vocabulary as Prisma.InputJsonValue,
-        grammarCorrections: assessment.suggestions.grammar as Prisma.InputJsonValue,
-        
+    // Add job to the BullMQ audio-processing queue
+    await this.audioQueue.add(
+      'process-audio', 
+      {
+        sessionId,
+        userId,
+        audioBufferBase64,
         prepTimeUsedSeconds: prepTimeUsed,
-        speakingTimeSeconds: speakingTimeSeconds,
-        completedAt: new Date(),
+        speakingTimeSeconds,
       },
-      include: {
-        question: true,
-      },
-    });
-
-    // Update user progress
-    await this.updateUserProgress(userId);
-
-    // Generate signed URL for audio playback if audio was uploaded
-    let audioPlaybackUrl: string | null = null;
-    if (audioKey) {
-      try {
-        audioPlaybackUrl = await this.s3Service.getSignedUrl(audioKey);
-      } catch (error) {
-        console.warn('Failed to generate signed URL for playback:', error.message);
+      {
+        jobId: `audio-${sessionId}`, // Prevent duplicate grading attempts
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
       }
-    }
+    );
 
+    // Return early before S3, Whisper, and Claude execute
     return {
-      ...updatedSession,
-      audioUrl: audioPlaybackUrl, // Return signed URL for playback
+      success: true,
+      message: 'Audio submission accepted and is being processed in the background.',
+      sessionId,
+      status: 'processing', // Client can poll if necessary
     };
   }
 

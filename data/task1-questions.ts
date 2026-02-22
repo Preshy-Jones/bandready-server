@@ -7,7 +7,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The graph below shows the consumption of three different types of fast food by teenagers in Mauritius from 1985 to 2015.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null, // In production, this would be a URL to the chart image
+    imageUrl: "/images/task1/fast_food.png",
   },
   {
     id: 't1-line-002',
@@ -16,7 +16,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The line graph below shows the percentage of tourists to England who visited four different attractions in Brighton.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/brighton_tourists.png",
   },
 
   // BAR CHARTS
@@ -27,7 +27,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The chart below shows the results of a survey about people\'s coffee and tea buying and drinking habits in five Australian cities.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/australian_coffee.png",
   },
   {
     id: 't1-bar-002',
@@ -36,7 +36,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The bar chart below shows the top ten countries for the production and consumption of electricity in 2014.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/electricity.png",
   },
 
   // PIE CHARTS
@@ -47,7 +47,7 @@ export const task1Questions = [
     subType: 'pie_chart',
     prompt:
       'The pie charts below show the average household expenditures in Japan and Malaysia in the year 2010.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/japan_malaysia_pie.png",
   },
 
   // TABLES
@@ -58,7 +58,7 @@ export const task1Questions = [
     subType: 'table',
     prompt:
       'The table below shows the numbers of visitors to Ashdown Museum during the year before and the year after it was refurbished. The charts show the result of surveys asking visitors how satisfied they were with their visit, during the same two periods.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/ashdown_museum.png",
   },
 
   // PROCESS DIAGRAMS
@@ -69,7 +69,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagram below shows the process of recycling plastic bottles.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/plastic_bottle.png",
   },
   {
     id: 't1-process-002',
@@ -78,7 +78,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagrams below show the life cycle of a species of large fish called the salmon.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/salmon_life_cycle.png",
   },
 
   // MAPS
@@ -89,7 +89,7 @@ export const task1Questions = [
     subType: 'map',
     prompt:
       'The maps below show the centre of a small town called Islip as it is now, and plans for its development.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/islip_maps.png",
   },
 
   // OFFICIAL IELTS ACADEMIC SAMPLE TASKS (IELTS.org sample tasks PDF)
@@ -100,7 +100,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The chart below shows the number of men and women in further education in Britain in three periods and whether they were studying full-time or part-time.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Bar+Chart:+Further+Education+in+Britain",
   },
   {
     id: 't1-official-academic-002',
@@ -109,7 +109,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The graph below shows radio and television audiences throughout the day in 1992.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Line+Graph:+Radio+and+TV+Audiences+(1992)",
   },
   {
     id: 't1-official-academic-003',
@@ -118,7 +118,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagram below shows the process by which bricks are manufactured for the building industry.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: null,
+    imageUrl: "/images/task1/brick_manufacturing.png",
   },
 
   // ==========================================
