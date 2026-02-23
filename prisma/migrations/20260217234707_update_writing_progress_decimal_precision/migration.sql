@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "writing_progress" ALTER COLUMN "avg_overall_score" SET DATA TYPE DECIMAL(4,2),
+ALTER COLUMN "avg_task_response" SET DATA TYPE DECIMAL(4,2),
+ALTER COLUMN "avg_coherence" SET DATA TYPE DECIMAL(4,2),
+ALTER COLUMN "avg_lexical" SET DATA TYPE DECIMAL(4,2),
+ALTER COLUMN "avg_grammar" SET DATA TYPE DECIMAL(4,2),
+ALTER COLUMN "avg_task1_score" SET DATA TYPE DECIMAL(4,2),
+ALTER COLUMN "avg_task2_score" SET DATA TYPE DECIMAL(4,2);

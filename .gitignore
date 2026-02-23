@@ -19,7 +19,7 @@ npm-debug.log*
 Thumbs.db
 
 # Prisma
-prisma/migrations/
+# Note: migrations MUST be tracked in git!
 
 # Test
 coverage/
