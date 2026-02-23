@@ -7,6 +7,7 @@ import { WritingModule } from './writing/writing.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BullModule } from '@nestjs/bullmq';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { BullModule } from '@nestjs/bullmq';
     PracticeModule,
     WritingModule,
     PaymentsModule,
+    MailModule,
   ],
 })
 export class AppModule {}

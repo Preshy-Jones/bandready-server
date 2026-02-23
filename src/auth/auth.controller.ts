@@ -22,6 +22,18 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  async verifyOtp(@Body() body: { email: string; otp: string }) {
+    return this.authService.verifyOtp(body.email, body.otp);
+  }
+
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendOtp(@Body() body: { email: string }) {
+    return this.authService.resendOtp(body.email);
+  }
+
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleAuth() {

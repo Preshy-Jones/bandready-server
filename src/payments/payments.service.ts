@@ -11,7 +11,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PaymentStatus } from '@prisma/client';
 
-type PlanKey = 'monthly' | 'quarterly' | 'yearly';
+type PlanKey = string;
 type PaymentProvider = 'paystack' | 'paddle';
 
 // Countries where Paystack is available and preferred
@@ -50,7 +50,7 @@ type PaystackVerifyResponse = {
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number }>;
+  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; sessionCount?: number }>;
   private readonly paddlePlanConfig: Record<PlanKey, { amountCents: number; durationDays: number; priceId: string }>;
 
   constructor(
@@ -59,37 +59,27 @@ export class PaymentsService {
   ) {
     // Paystack plans (NGN Kobo)
     this.paystackPlanConfig = {
-      monthly: {
-        amountKobo: Number(this.configService.get('PAYSTACK_PREMIUM_MONTHLY_AMOUNT_KOBO') || 500000),
-        durationDays: Number(this.configService.get('PAYSTACK_PREMIUM_MONTHLY_DURATION_DAYS') || 30),
-      },
-      quarterly: {
-        amountKobo: Number(this.configService.get('PAYSTACK_PREMIUM_QUARTERLY_AMOUNT_KOBO') || 1350000),
-        durationDays: Number(this.configService.get('PAYSTACK_PREMIUM_QUARTERLY_DURATION_DAYS') || 90),
-      },
-      yearly: {
-        amountKobo: Number(this.configService.get('PAYSTACK_PREMIUM_YEARLY_AMOUNT_KOBO') || 5000000),
-        durationDays: Number(this.configService.get('PAYSTACK_PREMIUM_YEARLY_DURATION_DAYS') || 365),
-      },
+      // Legacy Subscriptions
+      monthly: { amountKobo: 500000, durationDays: 30 },
+      quarterly: { amountKobo: 1350000, durationDays: 90 },
+      yearly: { amountKobo: 5000000, durationDays: 365 },
+      
+      // New Session Packs
+      starter: { amountKobo: 75000, durationDays: 0, sessionCount: 5 },
+      standard: { amountKobo: 200000, durationDays: 0, sessionCount: 15 },
+      pro: { amountKobo: 450000, durationDays: 0, sessionCount: 40 },
+      ultimate: { amountKobo: 1000000, durationDays: 0, sessionCount: 100 },
     };
 
     // Paddle plans (USD Cents)
     this.paddlePlanConfig = {
-      monthly: {
-        amountCents: Number(this.configService.get('PADDLE_PREMIUM_MONTHLY_AMOUNT_CENTS') || 999),
-        durationDays: 30,
-        priceId: this.configService.get('PADDLE_MONTHLY_PRICE_ID') || '',
-      },
-      quarterly: {
-        amountCents: Number(this.configService.get('PADDLE_PREMIUM_QUARTERLY_AMOUNT_CENTS') || 2499),
-        durationDays: 90,
-        priceId: this.configService.get('PADDLE_QUARTERLY_PRICE_ID') || '',
-      },
-      yearly: {
-        amountCents: Number(this.configService.get('PADDLE_PREMIUM_YEARLY_AMOUNT_CENTS') || 8999),
-        durationDays: 365,
-        priceId: this.configService.get('PADDLE_YEARLY_PRICE_ID') || '',
-      },
+      // Rest of World (ROW)
+      monthly: { amountCents: 999, durationDays: 30, priceId: this.configService.get('PADDLE_MONTHLY_PRICE_ID') || '' },
+      yearly: { amountCents: 9999, durationDays: 365, priceId: this.configService.get('PADDLE_YEARLY_PRICE_ID') || '' },
+      
+      // South Asia
+      monthly_sa: { amountCents: 499, durationDays: 30, priceId: this.configService.get('PADDLE_SA_MONTHLY_PRICE_ID') || '' },
+      yearly_sa: { amountCents: 4999, durationDays: 365, priceId: this.configService.get('PADDLE_SA_YEARLY_PRICE_ID') || '' },
     };
   }
 
@@ -389,14 +379,26 @@ export class PaymentsService {
       const subscriptionEnd = new Date(subscriptionStart);
       subscriptionEnd.setDate(subscriptionEnd.getDate() + configuredPlan.durationDays);
 
-      await tx.user.update({
-        where: { id: requestedUserId },
-        data: {
-          subscriptionTier: 'premium',
-          subscriptionExpiresAt: subscriptionEnd,
-          paystackCustomerCode: verification.customer?.customer_code || undefined,
-        },
-      });
+      const sessionCount = configuredPlan.sessionCount;
+
+      if (sessionCount) {
+        await tx.user.update({
+          where: { id: requestedUserId },
+          data: {
+            sessionBalance: { increment: sessionCount },
+            paystackCustomerCode: verification.customer?.customer_code || undefined,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: requestedUserId },
+          data: {
+            subscriptionTier: 'premium',
+            subscriptionExpiresAt: subscriptionEnd,
+            paystackCustomerCode: verification.customer?.customer_code || undefined,
+          },
+        });
+      }
 
       await tx.paymentTransaction.upsert({
         where: { reference: verification.reference },

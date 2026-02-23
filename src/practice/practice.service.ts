@@ -321,7 +321,8 @@ export class PracticeService {
       progress,
       targetScore: normalizedUser?.targetBandScore,
       dailySessionsUsed: normalizedUser?.dailySessionsUsed || 0,
-      dailySessionsLimit: normalizedUser?.subscriptionTier === 'premium' ? null : 3,
+      sessionBalance: normalizedUser?.sessionBalance || 0,
+      dailySessionsLimit: normalizedUser?.subscriptionTier === 'premium' || (normalizedUser?.sessionBalance || 0) > 0 ? null : 3,
       scoreTrend: recentScores,
       topicDistribution: topicDistribution.map(t => ({
         part: t.part,

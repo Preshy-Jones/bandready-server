@@ -105,6 +105,13 @@ export class UsersService {
     });
   }
 
+  async update(id: string, data: Prisma.UserUpdateInput) {
+    return this.prisma.user.update({
+      where: { id },
+      data,
+    });
+  }
+
   async updateGoals(userId: string, data: {
     targetBandScore?: number;
     targetExamDate?: Date;
@@ -155,6 +162,25 @@ export class UsersService {
   }
 
   async incrementDailySession(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+
+    // Premium users don't consume sessions
+    if (this.isPremiumActive(user)) {
+      return user;
+    }
+
+    // If user has a session pack, deduct from balance
+    if (user.sessionBalance > 0) {
+      return this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          sessionBalance: { decrement: 1 },
+        },
+      });
+    }
+
+    // Otherwise, consume a daily free session
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -173,6 +199,9 @@ export class UsersService {
     
     // Premium users have unlimited sessions
     if (this.isPremiumActive(user)) return true;
+
+    // Users with a session balance can start a session
+    if (user.sessionBalance > 0) return true;
     
     // Free users get 3 sessions per day
     return user.dailySessionsUsed < 3;
