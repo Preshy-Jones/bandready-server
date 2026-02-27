@@ -1,9 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { task1Questions } from '../data/task1-questions';
 import { task2Questions } from '../data/task2-questions';
 import { grammarDrills } from '../data/grammar-drills';
 import { vocabularyDrills } from '../data/vocabulary-drills';
 import { coherenceDrills } from '../data/coherence-drills';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -487,6 +488,29 @@ async function main() {
     })),
   });
   console.log(`✅ Created ${writingDrills.length} writing drills`);
+
+  // =========================
+  // ADMIN USER SEED
+  // =========================
+  console.log('🌱 Seeding default admin user...');
+
+  const adminEmail = 'admin@bandready.app';
+  const adminPassword = 'Admin@123';
+  const adminHash = await bcrypt.hash(adminPassword, 10);
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { role: Role.ADMIN },
+    create: {
+      email: adminEmail,
+      passwordHash: adminHash,
+      fullName: 'BandReady Admin',
+      role: Role.ADMIN,
+      isEmailVerified: true,
+      subscriptionTier: 'premium',
+    },
+  });
+  console.log(`✅ Admin user ready → ${adminEmail} / ${adminPassword}`);
   
   console.log('🎉 Database seeded successfully with speaking + writing data!');
 }

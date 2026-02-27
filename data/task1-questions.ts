@@ -217,6 +217,15 @@ export const task1Questions = [
     imageUrl: null,
   },
 
+  {
+    id:'t1-general-formal-005',
+      taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'formal_letter',
+    prompt:"You and your family are planning to spend a weekend at a seaside hotel. Write a letter to the hotel, making the arrangements. In your letter tell them when you will be arriving and leaving explain what type of rooms you would like, and ask how much the weekend will cost ask about activities and places of interest near the hotel You should write at least 150 words. You do NOT need to write any addresses. Begin your letter as follows: Dear Sir or Madam,",
+    imageUrl: null,
+  },
+
   // SEMI-FORMAL LETTERS
   {
     id: 't1-general-semi-001',

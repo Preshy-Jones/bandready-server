@@ -6,6 +6,7 @@ import { PracticeModule } from './practice/practice.module';
 import { WritingModule } from './writing/writing.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { PaymentsModule } from './payments/payments.module';
+import { AdminModule } from './admin/admin.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module';
 
@@ -36,6 +37,7 @@ import { MailModule } from './mail/mail.module';
     PracticeModule,
     WritingModule,
     PaymentsModule,
+    AdminModule,
     MailModule,
   ],
 })

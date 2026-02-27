@@ -133,7 +133,7 @@ export class SpeechAnalysisService {
     });
 
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       max_tokens: 3072,
       response_format: { type: 'json_object' },
       messages: [
@@ -168,7 +168,7 @@ export class SpeechAnalysisService {
     const prompt = generateModelAnswerPrompt(params);
 
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       max_tokens: 1536,
       response_format: { type: 'json_object' },
       messages: [
@@ -304,7 +304,7 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
 8. No additional text before or after the JSON`;
 
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       max_tokens: 5120,
       response_format: { type: 'json_object' },
       messages: [
@@ -334,7 +334,7 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
     const prompt = getDynamicPart3Prompt(part2Topic, userTranscript);
 
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o', // or gpt-4-turbo
+      model: 'gpt-4o-mini', // or gpt-4-turbo
       max_tokens: 1000,
       messages: [
         { role: 'user', content: prompt }

@@ -8,6 +8,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
   id                    String    @id @default(uuid())
   email                 String    @unique
@@ -31,6 +36,7 @@ model User {
   sessionBalance        Int       @default(0) @map("session_balance")
   dailySessionsUsed     Int       @default(0) @map("daily_sessions_used")
   dailySessionsResetAt  DateTime  @default(now()) @map("daily_sessions_reset_at")
+  role                  Role      @default(USER)
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 

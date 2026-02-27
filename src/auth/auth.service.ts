@@ -15,6 +15,7 @@ export interface GoogleUser {
 export interface JwtPayload {
   sub: string;
   email: string;
+  role?: string;
 }
 
 export interface RegisterDto {
@@ -121,7 +122,7 @@ export class AuthService {
     }
     
     // Generate tokens
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     
     return {
       user: {
@@ -133,6 +134,7 @@ export class AuthService {
         nativeLanguage: user.nativeLanguage,
         subscriptionTier: user.subscriptionTier,
         subscriptionExpiresAt: user.subscriptionExpiresAt,
+        role: user.role,
       },
       ...tokens,
     };
@@ -233,8 +235,8 @@ export class AuthService {
     };
   }
 
-  async generateTokens(userId: string, email: string) {
-    const payload: JwtPayload = { sub: userId, email };
+  async generateTokens(userId: string, email: string, role?: string) {
+    const payload: JwtPayload = { sub: userId, email, role };
     
     const accessToken = this.jwtService.sign(payload);
     

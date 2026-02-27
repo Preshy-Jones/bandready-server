@@ -5,9 +5,21 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   
-  // Enable CORS for frontend and mobile
+  // Enable CORS with restricted origins
+  const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    process.env.ADMIN_URL || 'http://localhost:3002',
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: true, // Allow all origins for development (mobile app)
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   });
   
