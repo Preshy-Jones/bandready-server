@@ -128,3 +128,5 @@ func (h *EssayHandler) GetEssayHistory(c *gin.Context) {
 		"offset": offset,
 	})
 }
+
+// getAllQuestionsAdded for categories view
