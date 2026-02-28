@@ -72,6 +72,34 @@ export class EssayController {
   }
 
   /**
+   * Get all questions by task type
+   */
+  @Get('questions/all/:taskType')
+  async getAllQuestions(
+    @CurrentUser() user: any,
+    @Param('taskType') taskType: string,
+    @Query('examType') queryExamType?: string,
+  ) {
+    const fullUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { examType: true },
+    });
+
+    const where: any = {
+      taskType: taskType.toUpperCase() as TaskType,
+      isActive: true,
+      examType: queryExamType ? queryExamType.toUpperCase() : (fullUser?.examType || 'ACADEMIC'),
+    };
+
+    const questions = await this.prisma.writingQuestion.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return questions;
+  }
+
+  /**
    * Get specific question by ID
    */
   @Get('questions/by-id/:questionId')
