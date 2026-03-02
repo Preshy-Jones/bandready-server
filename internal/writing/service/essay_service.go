@@ -385,3 +385,5 @@ Return this exact JSON structure:
   "vocabularySuggestions": [{"original": "...", "suggested": "...", "context": "..."}]
 }`, taskType, question, essay, criterionName)
 }
+
+// anthropicAndOpenAIProviders - configurable via ESSAY_ASSESSMENT_PROVIDER
