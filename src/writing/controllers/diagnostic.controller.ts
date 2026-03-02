@@ -105,6 +105,12 @@ export class DiagnosticController {
       }),
     ]);
 
+    // Fetch user native language for personalized feedback
+    const userExtended = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { nativeLanguage: true },
+    });
+
     // Assess both essays
     const [task1Feedback, task2Feedback] = await Promise.all([
       this.assessmentService.assessEssay(
@@ -114,6 +120,8 @@ export class DiagnosticController {
         task1Question.subType || 'general',
         task1Submission.wordCount,
         task1Submission.timeSpentSeconds,
+        task1Question.examType,
+        userExtended?.nativeLanguage
       ),
       this.assessmentService.assessEssay(
         task2Submission.essayText,
@@ -122,6 +130,8 @@ export class DiagnosticController {
         task2Question.subType || 'general',
         task2Submission.wordCount,
         task2Submission.timeSpentSeconds,
+        task2Question.examType,
+        userExtended?.nativeLanguage
       ),
     ]);
 

@@ -82,6 +82,12 @@ export class DrillService {
   ): Promise<DrillFeedbackResponse> {
     const drill = await this.getDrillById(drillId);
 
+    // Fetch user for personalized feedback
+    const userExtended = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { nativeLanguage: true },
+    });
+
     // Simple correctness check (can be enhanced with AI)
     const isCorrect = this.checkAnswer(userAnswer, drill.correctAnswer);
 
@@ -102,7 +108,7 @@ export class DrillService {
     // Generate AI feedback if answer is incorrect and Claude is available
     if (!isCorrect && this.anthropic) {
       try {
-        const aiFeedback = await this.generateAIFeedback(drill, userAnswer);
+        const aiFeedback = await this.generateAIFeedback(drill, userAnswer, userExtended?.nativeLanguage);
         return {
           isCorrect: false,
           ...aiFeedback,
@@ -172,6 +178,7 @@ export class DrillService {
   private async generateAIFeedback(
     drill: any,
     userAnswer: string,
+    nativeLanguage?: string | null,
   ): Promise<Omit<DrillFeedbackResponse, 'isCorrect'>> {
     const prompt = generateDrillFeedbackPrompt({
       drillType: drill.type,
@@ -180,6 +187,7 @@ export class DrillService {
       content: drill.content,
       correctAnswer: drill.correctAnswer,
       userAnswer,
+      nativeLanguage,
     });
 
     const response = await this.anthropic.messages.create({

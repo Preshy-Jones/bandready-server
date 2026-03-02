@@ -152,7 +152,7 @@ export class UsersService {
       return this.prisma.user.update({
         where: { id: userId },
         data: {
-          dailySessionsUsed: 0,
+          dailySpeakingUsed: 0,
           dailySessionsResetAt: now,
         },
       });
@@ -161,49 +161,88 @@ export class UsersService {
     return user;
   }
 
-  async incrementDailySession(userId: string) {
+  async incrementDailySession(userId: string, sessionType: 'speaking' | 'writing' = 'speaking') {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
 
-    // Premium users don't consume sessions
+    // Premium users (global subscription) don't consume sessions
     if (this.isPremiumActive(user)) {
       return user;
     }
 
-    // If user has a session pack, deduct from balance
-    if (user.sessionBalance > 0) {
+    if (sessionType === 'speaking') {
+      // If user has a session pack, deduct from balance
+      if (user.speakingBalance > 0) {
+        return this.prisma.user.update({
+          where: { id: userId },
+          data: { speakingBalance: { decrement: 1 } },
+        });
+      }
+      // Otherwise, consume a daily free session (max 3)
       return this.prisma.user.update({
         where: { id: userId },
-        data: {
-          sessionBalance: { decrement: 1 },
-        },
+        data: { dailySpeakingUsed: { increment: 1 } },
       });
     }
 
-    // Otherwise, consume a daily free session
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        dailySessionsUsed: { increment: 1 },
-      },
-    });
+    if (sessionType === 'writing') {
+      // Writing has NO free daily sessions. Deduct from balance directly.
+      if (user.writingBalance > 0) {
+        return this.prisma.user.update({
+          where: { id: userId },
+          data: { writingBalance: { decrement: 1 } },
+        });
+      }
+    }
+
+    return user;
   }
 
-  async canStartSession(userId: string): Promise<boolean> {
+  async hasPaidAccess(userId: string): Promise<boolean> {
+    const user = await this.syncSubscriptionStatus(userId);
+    if (!user) return false;
+    // Returns true if they have any session balances or an active subscription
+    return this.isPremiumActive(user) || user.speakingBalance > 0 || user.writingBalance > 0;
+  }
+
+  async hasPurchasedSessionPack(userId: string): Promise<boolean> {
+    const successfulPackPurchase = await this.prisma.paymentTransaction.findFirst({
+      where: {
+        userId,
+        status: 'SUCCESS',
+        provider: 'paystack',
+        plan: {
+          in: ['starter', 'standard', 'pro', 'ultimate'],
+        },
+      },
+      select: { id: true },
+    });
+
+    return !!successfulPackPurchase;
+  }
+
+  async canStartSession(userId: string, sessionType: 'speaking' | 'writing' = 'speaking'): Promise<boolean> {
     const normalizedUser = await this.syncSubscriptionStatus(userId);
     if (!normalizedUser) return false;
 
     const user = await this.resetDailySessionCount(normalizedUser.id);
-    
     if (!user) return false;
     
-    // Premium users have unlimited sessions
-    if (this.isPremiumActive(user)) return true;
+    if (sessionType === 'speaking') {
+      // Premium users (e.g. global subscriptions) have unlimited speaking sessions
+      if (this.isPremiumActive(user)) return true;
+      // Users with a speaking balance can start a session
+      if (user.speakingBalance > 0) return true;
+      // Free users get 3 speaking sessions per day
+      return user.dailySpeakingUsed < 3;
+    }
 
-    // Users with a session balance can start a session
-    if (user.sessionBalance > 0) return true;
-    
-    // Free users get 3 sessions per day
-    return user.dailySessionsUsed < 3;
+    if (sessionType === 'writing') {
+       // Users with a writing balance can start an essay test
+       // There are NO free daily sessions for writing, nor unlimited tiers.
+       return user.writingBalance > 0;
+    }
+
+    return false;
   }
 }

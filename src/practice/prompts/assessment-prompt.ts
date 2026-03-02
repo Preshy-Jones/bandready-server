@@ -91,6 +91,7 @@ export function generateAssessmentPrompt(params: {
   pauseCount: number;
   longPauseCount: number;
   cueCardPoints?: string[];
+  nativeLanguage?: string | null;
 }): string {
   const partContext = {
     1: 'Part 1 (Introduction & Interview): Candidates answer questions about familiar topics. Answers should be 2-4 sentences.',
@@ -100,6 +101,7 @@ export function generateAssessmentPrompt(params: {
 
   let prompt = `## CONTEXT
 Test Part: ${partContext[params.part]}
+${params.nativeLanguage ? `\n## STUDENT PROFILE\nThe student is a native ${params.nativeLanguage} speaker. Pay special attention to common pronunciation, grammar, and vocabulary transfer errors typical for ${params.nativeLanguage} speakers learning English.\n` : ''}
 
 ## QUESTION
 "${params.question}"

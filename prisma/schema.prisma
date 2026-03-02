@@ -33,8 +33,9 @@ model User {
   isEmailVerified       Boolean   @default(false) @map("is_email_verified")
   emailVerificationOtp  String?   @map("email_verification_otp")
   emailVerificationOtpExpiry DateTime? @map("email_verification_otp_expiry")
-  sessionBalance        Int       @default(0) @map("session_balance")
-  dailySessionsUsed     Int       @default(0) @map("daily_sessions_used")
+  speakingBalance       Int       @default(0) @map("speaking_balance")
+  writingBalance        Int       @default(0) @map("writing_balance")
+  dailySpeakingUsed     Int       @default(0) @map("daily_speaking_used")
   dailySessionsResetAt  DateTime  @default(now()) @map("daily_sessions_reset_at")
   role                  Role      @default(USER)
   createdAt             DateTime  @default(now()) @map("created_at")
@@ -144,7 +145,8 @@ model PracticeSession {
   mispronouncedWords    Json? @map("mispronounced_words")
 
   // Model answer comparison
-  modelAnswer String? @map("model_answer")
+  modelAnswer         String? @map("model_answer")
+  enhancedModelAnswer Json?   @map("enhanced_model_answer")
 
   // Session metadata
   prepTimeUsedSeconds Int?      @map("prep_time_used_seconds")

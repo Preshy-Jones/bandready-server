@@ -39,7 +39,18 @@ export class AudioProcessingProcessor extends WorkerHost {
       // 1. Get session with question
       const session = await this.prisma.practiceSession.findUnique({
         where: { id: sessionId },
-        include: { question: true },
+        select: {
+          part: true,
+          user: {
+            select: { nativeLanguage: true }
+          },
+          question: {
+            select: {
+              questionText: true,
+              cueCardPoints: true,
+            },
+          },
+        },
       });
 
       if (!session) {
@@ -69,6 +80,7 @@ export class AudioProcessingProcessor extends WorkerHost {
         transcript: transcription.text,
         audioMetrics,
         cueCardPoints: session.question.cueCardPoints as string[] | undefined,
+        nativeLanguage: session.user?.nativeLanguage,
       });
 
       // 6. Update session with results
@@ -107,6 +119,7 @@ export class AudioProcessingProcessor extends WorkerHost {
           speakingTimeSeconds: speakingTimeSeconds,
           completedAt: new Date(),
         },
+        select: { id: true },
       });
 
       // 7. Update user progress

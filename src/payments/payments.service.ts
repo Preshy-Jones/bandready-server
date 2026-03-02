@@ -50,7 +50,7 @@ type PaystackVerifyResponse = {
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; sessionCount?: number }>;
+  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; sessionCount?: number; writingCount?: number }>;
   private readonly paddlePlanConfig: Record<PlanKey, { amountCents: number; durationDays: number; priceId: string }>;
 
   constructor(
@@ -65,10 +65,10 @@ export class PaymentsService {
       yearly: { amountKobo: 5000000, durationDays: 365 },
       
       // New Session Packs
-      starter: { amountKobo: 75000, durationDays: 0, sessionCount: 5 },
-      standard: { amountKobo: 200000, durationDays: 0, sessionCount: 15 },
-      pro: { amountKobo: 450000, durationDays: 0, sessionCount: 40 },
-      ultimate: { amountKobo: 1000000, durationDays: 0, sessionCount: 100 },
+      starter: { amountKobo: 75000, durationDays: 0, sessionCount: 5, writingCount: 8 },
+      standard: { amountKobo: 200000, durationDays: 0, sessionCount: 15, writingCount: 25 },
+      pro: { amountKobo: 450000, durationDays: 0, sessionCount: 40, writingCount: 65 },
+      ultimate: { amountKobo: 1000000, durationDays: 0, sessionCount: 100, writingCount: 160 },
     };
 
     // Paddle plans (USD Cents)
@@ -252,14 +252,18 @@ export class PaymentsService {
     const verification = await this.fetchVerification(reference);
     await this.applySuccessfulPayment(verification, userId);
 
+    const updatedUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionTier: true, subscriptionExpiresAt: true, speakingBalance: true, writingBalance: true },
+    });
+
     return {
       reference: verification.reference,
       status: 'success',
-      subscriptionTier: 'premium',
-      subscriptionExpiresAt: (await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { subscriptionExpiresAt: true },
-      }))?.subscriptionExpiresAt,
+      subscriptionTier: updatedUser?.subscriptionTier || 'free',
+      subscriptionExpiresAt: updatedUser?.subscriptionExpiresAt || null,
+      speakingBalance: updatedUser?.speakingBalance || 0,
+      writingBalance: updatedUser?.writingBalance || 0,
     };
   }
 
@@ -380,12 +384,14 @@ export class PaymentsService {
       subscriptionEnd.setDate(subscriptionEnd.getDate() + configuredPlan.durationDays);
 
       const sessionCount = configuredPlan.sessionCount;
+      const writingCount = configuredPlan.writingCount;
 
-      if (sessionCount) {
+      if (sessionCount || writingCount) {
         await tx.user.update({
           where: { id: requestedUserId },
           data: {
-            sessionBalance: { increment: sessionCount },
+            speakingBalance: sessionCount ? { increment: sessionCount } : undefined,
+            writingBalance: writingCount ? { increment: writingCount } : undefined,
             paystackCustomerCode: verification.customer?.customer_code || undefined,
           },
         });

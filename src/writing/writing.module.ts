@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../common/prisma/prisma.module';
+import { UsersModule } from '../users/users.module';
 
 // Controllers
 import { DiagnosticController } from './controllers/diagnostic.controller';
@@ -15,7 +16,7 @@ import { DrillService } from './services/drill.service';
 import { ProgressService } from './services/progress.service';
 
 @Module({
-  imports: [ConfigModule, PrismaModule],
+  imports: [ConfigModule, PrismaModule, UsersModule],
   controllers: [
     DiagnosticController,
     EssayController,

@@ -129,7 +129,8 @@ export class AdminService {
           subscriptionTier: true,
           subscriptionExpiresAt: true,
           isEmailVerified: true,
-          sessionBalance: true,
+          speakingBalance: true,
+          writingBalance: true,
           role: true,
           createdAt: true,
           _count: {

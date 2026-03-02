@@ -9,6 +9,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { AdminModule } from './admin/admin.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { MailModule } from './mail/mail.module';
     PaymentsModule,
     AdminModule,
     MailModule,
+    ScheduleModule.forRoot(),
+    TasksModule,
   ],
 })
 export class AppModule {}

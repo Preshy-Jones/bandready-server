@@ -5,6 +5,7 @@ export const generateDrillFeedbackPrompt = ({
   content,
   correctAnswer,
   userAnswer,
+  nativeLanguage,
 }: {
   drillType: string;
   category: string;
@@ -12,9 +13,14 @@ export const generateDrillFeedbackPrompt = ({
   content: string;
   correctAnswer: string;
   userAnswer: string;
+  nativeLanguage?: string | null;
 }) => {
-  return `You are an IELTS Writing tutor providing feedback on a practice drill.
+  const languageContext = nativeLanguage 
+    ? `\n## STUDENT PROFILE\nThe student is a native ${nativeLanguage} speaker. Consider common grammar/vocabulary transfer errors typical for ${nativeLanguage} to English translation in your feedback.\n`
+    : '';
 
+  return `You are an IELTS Writing tutor providing feedback on a practice drill.
+${languageContext}
 ## DRILL DETAILS
 Type: ${drillType}
 Category: ${category}

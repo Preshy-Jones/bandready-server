@@ -119,6 +119,7 @@ export class SpeechAnalysisService {
     transcript: string;
     audioMetrics: AudioMetrics;
     cueCardPoints?: string[];
+    nativeLanguage?: string | null;
   }): Promise<AssessmentResult> {
     const prompt = generateAssessmentPrompt({
       part: params.part,
@@ -130,6 +131,7 @@ export class SpeechAnalysisService {
       pauseCount: params.audioMetrics.pauseCount,
       longPauseCount: params.audioMetrics.longPauseCount,
       cueCardPoints: params.cueCardPoints,
+      nativeLanguage: params.nativeLanguage,
     });
 
     const response = await this.openai.chat.completions.create({

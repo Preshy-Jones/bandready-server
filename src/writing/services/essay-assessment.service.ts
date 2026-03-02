@@ -45,6 +45,7 @@ export class EssayAssessmentService {
     wordCount: number,
     timeSpent: number,
     examType: ExamType = 'ACADEMIC',
+    nativeLanguage?: string | null,
   ): Promise<EssayFeedbackResponse> {
     this.logger.log(`Assessing ${taskType} (${examType}) essay with ${wordCount} words`);
 
@@ -59,6 +60,7 @@ export class EssayAssessmentService {
         essayText,
         wordCount,
         timeSpent,
+        nativeLanguage,
       });
     } else if (examType === 'GENERAL') {
       systemPrompt = TASK1_GENERAL_SYSTEM_PROMPT;
@@ -68,6 +70,7 @@ export class EssayAssessmentService {
         essayText,
         wordCount,
         timeSpent,
+        nativeLanguage,
       });
     } else {
       systemPrompt = TASK1_SYSTEM_PROMPT;
@@ -77,12 +80,13 @@ export class EssayAssessmentService {
         essayText,
         wordCount,
         timeSpent,
+        nativeLanguage,
       });
     }
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 4096,
         temperature: 0.3, // Lower temperature for more consistent grading
         system: systemPrompt,
@@ -99,6 +103,9 @@ export class EssayAssessmentService {
         throw new BadRequestException('Unexpected response format from Claude');
       }
 
+      console.log("content response", content);
+      
+
       // Extract JSON from the response
       const jsonMatch = content.text.match(/```json\s*([\s\S]*?)\s*```/);
       if (!jsonMatch) {
@@ -108,6 +115,9 @@ export class EssayAssessmentService {
       }
 
       const assessmentData: EssayFeedbackResponse = JSON.parse(jsonMatch[1]);
+
+      console.log("assessmentData", assessmentData);
+      
 
       // Validate the response structure
       if (
@@ -157,12 +167,12 @@ export class EssayAssessmentService {
       data: {
         essayId,
         taskResponseFeedback: isTask1
-          ? feedback.feedback.taskAchievement || ''
-          : feedback.feedback.taskResponse || '',
-        coherenceCohesionFeedback: feedback.feedback.coherenceCohesion,
-        lexicalResourceFeedback: feedback.feedback.lexicalResource,
-        grammarAccuracyFeedback: feedback.feedback.grammaticalRangeAccuracy,
-        overallFeedback: feedback.feedback.overall,
+          ? feedback.feedback?.taskAchievement || ''
+          : feedback.feedback?.taskResponse || '',
+        coherenceCohesionFeedback: feedback.feedback?.coherenceCohesion || '',
+        lexicalResourceFeedback: feedback.feedback?.lexicalResource || '',
+        grammarAccuracyFeedback: feedback.feedback?.grammaticalRangeAccuracy || '',
+        overallFeedback: feedback.feedback?.overall || '',
         annotations: feedback.annotations as any,
         examinerInsights: feedback.examinerInsights as any,
         priorityFixes: feedback.priorityFixes as any,
@@ -181,7 +191,10 @@ export class EssayAssessmentService {
     // Get the submission with its question to determine task type
     const submission = await this.prisma.essaySubmission.findUnique({
       where: { id: essayId },
-      include: { question: true },
+      include: { 
+        question: true,
+        user: { select: { nativeLanguage: true } }
+      },
     });
 
     if (!submission) {
@@ -244,6 +257,7 @@ export class EssayAssessmentService {
       submission.wordCount,
       submission.timeSpentSeconds,
       submission.question.examType,
+      submission.user?.nativeLanguage,
     );
 
     // Save the feedback

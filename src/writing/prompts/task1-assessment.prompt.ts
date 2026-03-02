@@ -67,15 +67,21 @@ export const generateTask1AssessmentPrompt = ({
   essayText,
   wordCount,
   timeSpent,
+  nativeLanguage,
 }: {
   question: string;
   questionType: string;
   essayText: string;
   wordCount: number;
   timeSpent: number;
+  nativeLanguage?: string | null;
 }) => {
-  return `## ASSESSMENT REQUEST
+  const languageContext = nativeLanguage
+    ? `\n### STUDENT PROFILE\nThe student is a native ${nativeLanguage} speaker. Pay special attention to common grammar transfer errors and vocabulary misuse typical for ${nativeLanguage} to English translation, and provide feedback that specifically addresses these linguistic patterns.\n`
+    : '';
 
+  return `## ASSESSMENT REQUEST
+${languageContext}
 ### Question Type
 Task 1 ${questionType} (e.g., line_graph, bar_chart, pie_chart, table, process, map)
 

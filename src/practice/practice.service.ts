@@ -60,26 +60,143 @@ export class PracticeService {
   // Session Methods
   // ========================
 
-  async canUserStartSession(userId: string): Promise<boolean> {
-    return this.usersService.canStartSession(userId);
+  async canStartSession(userId: string) {
+    return this.usersService.canStartSession(userId, 'speaking');
   }
 
   async createSession(userId: string, questionId: string, part: 1 | 2 | 3) {
-    // Increment daily session count
-    await this.usersService.incrementDailySession(userId);
+    // All logic is inside a single transaction. A SELECT FOR UPDATE on the user row
+    // serialises concurrent session-start requests for the same user, preventing the
+    // race condition where two requests both pass the duplicate check before either
+    // has committed a session record and decremented the balance.
+    return this.prisma.$transaction(async (tx) => {
+      // Acquire a row-level lock on the user so concurrent calls queue behind this one.
+      await tx.$queryRaw`SELECT id FROM "users" WHERE id = ${userId} FOR UPDATE`;
 
-    const session = await this.prisma.practiceSession.create({
-      data: {
-        userId,
-        questionId,
-        part,
-      },
-      include: {
-        question: true,
-      },
+      // Guard against duplicate start calls (e.g. retries/double-invocation) draining balance.
+      const duplicateWindowStart = new Date(Date.now() - 60 * 1000);
+      const recentOpenSession = await tx.practiceSession.findFirst({
+        where: {
+          userId,
+          completedAt: null,
+          mockTestId: null,
+          part,
+          createdAt: { gte: duplicateWindowStart },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          userId: true,
+          questionId: true,
+          part: true,
+          audioUrl: true,
+          audioDurationSeconds: true,
+          transcript: true,
+          transcriptWithTimestamps: true,
+          overallBandScore: true,
+          fluencyCoherenceScore: true,
+          lexicalResourceScore: true,
+          grammarAccuracyScore: true,
+          pronunciationScore: true,
+          wordsPerMinute: true,
+          totalWords: true,
+          fillerWordCount: true,
+          fillerWordsDetail: true,
+          pauseCount: true,
+          longPauseCount: true,
+          pauseLocations: true,
+          feedbackFluency: true,
+          feedbackVocabulary: true,
+          feedbackGrammar: true,
+          feedbackPronunciation: true,
+          feedbackOverall: true,
+          vocabularySuggestions: true,
+          grammarCorrections: true,
+          mispronouncedWords: true,
+          modelAnswer: true,
+          prepTimeUsedSeconds: true,
+          speakingTimeSeconds: true,
+          completedAt: true,
+          createdAt: true,
+          mockTestId: true,
+          questionNumber: true,
+          question: true,
+        },
+      });
+
+      if (recentOpenSession) {
+        return recentOpenSession;
+      }
+
+      // Apply session consumption within the transaction so the decrement and the
+      // session record are committed together atomically.
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (user) {
+        const isPremium =
+          user.subscriptionTier === 'premium' &&
+          (!user.subscriptionExpiresAt || user.subscriptionExpiresAt > new Date());
+
+        if (!isPremium) {
+          if (user.speakingBalance > 0) {
+            await tx.user.update({
+              where: { id: userId },
+              data: { speakingBalance: { decrement: 1 } },
+            });
+          } else {
+            await tx.user.update({
+              where: { id: userId },
+              data: { dailySpeakingUsed: { increment: 1 } },
+            });
+          }
+        }
+      }
+
+      return tx.practiceSession.create({
+        data: {
+          userId,
+          questionId,
+          part,
+        },
+        select: {
+          id: true,
+          userId: true,
+          questionId: true,
+          part: true,
+          audioUrl: true,
+          audioDurationSeconds: true,
+          transcript: true,
+          transcriptWithTimestamps: true,
+          overallBandScore: true,
+          fluencyCoherenceScore: true,
+          lexicalResourceScore: true,
+          grammarAccuracyScore: true,
+          pronunciationScore: true,
+          wordsPerMinute: true,
+          totalWords: true,
+          fillerWordCount: true,
+          fillerWordsDetail: true,
+          pauseCount: true,
+          longPauseCount: true,
+          pauseLocations: true,
+          feedbackFluency: true,
+          feedbackVocabulary: true,
+          feedbackGrammar: true,
+          feedbackPronunciation: true,
+          feedbackOverall: true,
+          vocabularySuggestions: true,
+          grammarCorrections: true,
+          mispronouncedWords: true,
+          modelAnswer: true,
+          prepTimeUsedSeconds: true,
+          speakingTimeSeconds: true,
+          completedAt: true,
+          createdAt: true,
+          mockTestId: true,
+          questionNumber: true,
+          question: true,
+        },
+      });
     });
-
-    return session;
   }
 
   async processSession(
@@ -92,7 +209,17 @@ export class PracticeService {
     // Get session with question
     const session = await this.prisma.practiceSession.findUnique({
       where: { id: sessionId },
-      include: { question: true },
+      select: {
+        id: true,
+        userId: true,
+        part: true,
+        question: {
+          select: {
+            questionText: true,
+            cueCardPoints: true,
+          },
+        },
+      },
     });
 
     if (!session || session.userId !== userId) {
@@ -131,7 +258,43 @@ export class PracticeService {
   async getSessionWithDetails(sessionId: string) {
     const session = await this.prisma.practiceSession.findUnique({
       where: { id: sessionId },
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        questionId: true,
+        part: true,
+        audioUrl: true,
+        audioDurationSeconds: true,
+        transcript: true,
+        transcriptWithTimestamps: true,
+        overallBandScore: true,
+        fluencyCoherenceScore: true,
+        lexicalResourceScore: true,
+        grammarAccuracyScore: true,
+        pronunciationScore: true,
+        wordsPerMinute: true,
+        totalWords: true,
+        fillerWordCount: true,
+        fillerWordsDetail: true,
+        pauseCount: true,
+        longPauseCount: true,
+        pauseLocations: true,
+        feedbackFluency: true,
+        feedbackVocabulary: true,
+        feedbackGrammar: true,
+        feedbackPronunciation: true,
+        feedbackOverall: true,
+        vocabularySuggestions: true,
+        grammarCorrections: true,
+        mispronouncedWords: true,
+        modelAnswer: true,
+        enhancedModelAnswer: true,
+        prepTimeUsedSeconds: true,
+        speakingTimeSeconds: true,
+        completedAt: true,
+        createdAt: true,
+        mockTestId: true,
+        questionNumber: true,
         question: true,
         user: {
           select: {
@@ -169,7 +332,42 @@ export class PracticeService {
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
-        include: {
+        select: {
+          id: true,
+          userId: true,
+          questionId: true,
+          part: true,
+          audioUrl: true,
+          audioDurationSeconds: true,
+          transcript: true,
+          transcriptWithTimestamps: true,
+          overallBandScore: true,
+          fluencyCoherenceScore: true,
+          lexicalResourceScore: true,
+          grammarAccuracyScore: true,
+          pronunciationScore: true,
+          wordsPerMinute: true,
+          totalWords: true,
+          fillerWordCount: true,
+          fillerWordsDetail: true,
+          pauseCount: true,
+          longPauseCount: true,
+          pauseLocations: true,
+          feedbackFluency: true,
+          feedbackVocabulary: true,
+          feedbackGrammar: true,
+          feedbackPronunciation: true,
+          feedbackOverall: true,
+          vocabularySuggestions: true,
+          grammarCorrections: true,
+          mispronouncedWords: true,
+          modelAnswer: true,
+          prepTimeUsedSeconds: true,
+          speakingTimeSeconds: true,
+          completedAt: true,
+          createdAt: true,
+          mockTestId: true,
+          questionNumber: true,
           question: {
             select: {
               topic: true,
@@ -193,17 +391,12 @@ export class PracticeService {
   // ========================
 
   async getUserProgress(userId: string) {
-    let progress = await this.prisma.userProgress.findUnique({
+    // Use upsert to avoid race conditions when multiple requests initialize progress concurrently.
+    return this.prisma.userProgress.upsert({
       where: { userId },
+      update: {},
+      create: { userId },
     });
-
-    if (!progress) {
-      progress = await this.prisma.userProgress.create({
-        data: { userId },
-      });
-    }
-
-    return progress;
   }
 
   async updateUserProgress(userId: string) {
@@ -295,35 +488,98 @@ export class PracticeService {
   }
 
   async getStats(userId: string) {
-    const progress = await this.getUserProgress(userId);
-    const normalizedUser = await this.usersService.syncSubscriptionStatus(userId);
+    // Run all queries in parallel for performance.
+    const [
+      normalizedUser,
+      recentScoredSessions,
+      totalAgg,
+      scoreTrend,
+      topicDistribution,
+      storedProgress,
+    ] = await Promise.all([
+      this.usersService.syncSubscriptionStatus(userId),
 
-    // Get score trend (last 10 sessions)
-    const recentScores = await this.prisma.practiceSession.findMany({
-      where: { userId, completedAt: { not: null } },
-      orderBy: { completedAt: 'asc' },
-      take: 10,
-      select: {
-        overallBandScore: true,
-        completedAt: true,
-        part: true,
-      },
-    });
+      // Last 10 completed+scored sessions used for computing live averages.
+      // Reading directly from practiceSession avoids the UserProgress cache being
+      // stale (e.g. the audio processor hasn't run yet, or updateUserProgress failed).
+      this.prisma.practiceSession.findMany({
+        where: {
+          userId,
+          completedAt: { not: null },
+          overallBandScore: { not: null },
+        },
+        orderBy: { completedAt: 'desc' },
+        take: 10,
+        select: {
+          overallBandScore: true,
+          fluencyCoherenceScore: true,
+          lexicalResourceScore: true,
+          grammarAccuracyScore: true,
+          pronunciationScore: true,
+        },
+      }),
 
-    // Get topic distribution
-    const topicDistribution = await this.prisma.practiceSession.groupBy({
-      by: ['part'],
-      where: { userId, completedAt: { not: null } },
-      _count: true,
-    });
+      // Aggregate for total session count and total practice time.
+      this.prisma.practiceSession.aggregate({
+        where: { userId, completedAt: { not: null } },
+        _sum: { audioDurationSeconds: true },
+        _count: true,
+      }),
+
+      // Score trend for the chart (chronological order).
+      this.prisma.practiceSession.findMany({
+        where: { userId, completedAt: { not: null } },
+        orderBy: { completedAt: 'asc' },
+        take: 10,
+        select: {
+          overallBandScore: true,
+          completedAt: true,
+          part: true,
+        },
+      }),
+
+      // Topic/part distribution.
+      this.prisma.practiceSession.groupBy({
+        by: ['part'],
+        where: { userId, completedAt: { not: null } },
+        _count: true,
+      }),
+
+      // Streak data only – computed by the audio processor which runs date-diff
+      // logic we don't want to duplicate here.
+      this.prisma.userProgress.findUnique({ where: { userId } }),
+    ]);
+
+    // Compute live averages from session records.
+    const n = recentScoredSessions.length;
+    const avg = (field: keyof typeof recentScoredSessions[0]) =>
+      n > 0
+        ? recentScoredSessions.reduce((sum, s) => sum + Number(s[field] ?? 0), 0) / n
+        : 0;
 
     return {
-      progress,
+      progress: {
+        avgOverallScore: avg('overallBandScore'),
+        avgFluencyScore: avg('fluencyCoherenceScore'),
+        avgLexicalScore: avg('lexicalResourceScore'),
+        avgGrammarScore: avg('grammarAccuracyScore'),
+        avgPronunciationScore: avg('pronunciationScore'),
+        totalSessions: totalAgg._count,
+        totalPracticeMinutes: Number(totalAgg._sum.audioDurationSeconds ?? 0) / 60,
+        // Streak lives in UserProgress (maintained by the audio processor).
+        currentStreakDays: storedProgress?.currentStreakDays ?? 0,
+        longestStreakDays: storedProgress?.longestStreakDays ?? 0,
+        lastPracticeDate: storedProgress?.lastPracticeDate ?? null,
+      },
       targetScore: normalizedUser?.targetBandScore,
-      dailySessionsUsed: normalizedUser?.dailySessionsUsed || 0,
-      sessionBalance: normalizedUser?.sessionBalance || 0,
-      dailySessionsLimit: normalizedUser?.subscriptionTier === 'premium' || (normalizedUser?.sessionBalance || 0) > 0 ? null : 3,
-      scoreTrend: recentScores,
+      dailySessionsUsed: normalizedUser?.dailySpeakingUsed || 0,
+      sessionBalance: normalizedUser?.speakingBalance || 0,
+      dailySessionsLimit:
+        normalizedUser?.subscriptionTier === 'premium' ||
+        (normalizedUser?.speakingBalance || 0) > 0
+          ? null
+          : 3,
+      scoreTrend,
       topicDistribution: topicDistribution.map(t => ({
         part: t.part,
         count: t._count,
@@ -338,8 +594,16 @@ export class PracticeService {
   async generateModelAnswer(sessionId: string, userId: string) {
     const session = await this.prisma.practiceSession.findUnique({
       where: { id: sessionId },
-      include: {
-        question: true,
+      select: {
+        userId: true,
+        part: true,
+        modelAnswer: true,
+        question: {
+          select: {
+            questionText: true,
+            cueCardPoints: true,
+          },
+        },
         user: { select: { targetBandScore: true } },
       },
     });
@@ -364,6 +628,7 @@ export class PracticeService {
     await this.prisma.practiceSession.update({
       where: { id: sessionId },
       data: { modelAnswer: result.modelAnswer },
+      select: { id: true },
     });
 
     return result;
@@ -372,8 +637,18 @@ export class PracticeService {
   async generateEnhancedModelAnswer(sessionId: string, userId: string) {
     const session = await this.prisma.practiceSession.findUnique({
       where: { id: sessionId },
-      include: {
-        question: true,
+      select: {
+        userId: true,
+        part: true,
+        transcript: true,
+        overallBandScore: true,
+        enhancedModelAnswer: true,
+        question: {
+          select: {
+            questionText: true,
+            cueCardPoints: true,
+          },
+        },
       },
     });
 
@@ -385,12 +660,26 @@ export class PracticeService {
       throw new BadRequestException('Session must be completed to generate model answer');
     }
 
-    return this.speechAnalysis.generateEnhancedModelAnswer({
+    // Return cached result if already generated
+    if (session.enhancedModelAnswer) {
+      return session.enhancedModelAnswer;
+    }
+
+    const result = await this.speechAnalysis.generateEnhancedModelAnswer({
       part: session.part as 1 | 2 | 3,
       question: session.question.questionText,
       userTranscript: session.transcript,
       userScore: Number(session.overallBandScore),
       cueCardPoints: session.question.cueCardPoints as string[] | undefined,
     });
+
+    // Persist so subsequent requests are served from cache
+    await this.prisma.practiceSession.update({
+      where: { id: sessionId },
+      data: { enhancedModelAnswer: result as any },
+      select: { id: true },
+    });
+
+    return result;
   }
 }

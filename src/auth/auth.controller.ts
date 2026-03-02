@@ -57,9 +57,12 @@ export class AuthController {
     // Check if user needs onboarding (no target band score set beyond default)
     const needsOnboarding = !user.nativeLanguage;
     const redirectPath = needsOnboarding ? '/onboarding' : '/dashboard';
-    
+
+    // Append isNew flag so the frontend can fire a signup analytics event
+    const isNewParam = user.isNew ? '&isNew=true' : '';
+
     // Redirect with token in query param (frontend will store in localStorage)
-    res.redirect(`${frontendUrl}${redirectPath}?token=${tokens.accessToken}`);
+    res.redirect(`${frontendUrl}${redirectPath}?token=${tokens.accessToken}${isNewParam}`);
   }
 
   @Get('me')
@@ -77,6 +80,8 @@ export class AuthController {
       subscriptionTier: req.user.subscriptionTier,
       subscriptionExpiresAt: req.user.subscriptionExpiresAt,
       dailySessionsUsed: req.user.dailySessionsUsed,
+      sessionBalance: req.user.sessionBalance,
+      country: req.user.country,
     };
   }
 

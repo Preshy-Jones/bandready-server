@@ -9,6 +9,7 @@ import {
   UseGuards,
   Logger,
   BadRequestException,
+  HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -18,8 +19,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { EssayAssessmentService } from '../services/essay-assessment.service';
 import { WeaknessProfileService } from '../services/weakness-profile.service';
 import { ProgressService } from '../services/progress.service';
+import { UsersService } from '../../users/users.service';
 import { SubmitEssayDto, GetQuestionsDto } from '../dto/submit-essay.dto';
-import { TaskType } from '@prisma/client';
+import { TaskType, Prisma } from '@prisma/client';
 
 @Controller('writing')
 @UseGuards(JwtAuthGuard)
@@ -31,6 +33,7 @@ export class EssayController {
     private assessmentService: EssayAssessmentService,
     private weaknessService: WeaknessProfileService,
     private progressService: ProgressService,
+    private usersService: UsersService,
   ) {}
 
   /**
@@ -124,6 +127,15 @@ export class EssayController {
     @Body() dto: SubmitEssayDto,
   ) {
     this.logger.log(`Submitting essay for user ${user.id}`);
+
+    // Check balance / Premium first
+    const canStart = await this.usersService.canStartSession(user.id, 'writing');
+    if (!canStart) {
+      throw new HttpException(
+        'Insufficient writing balance.',
+        HttpStatus.PAYMENT_REQUIRED,
+      );
+    }
 
     // Get question
     const question = await this.prisma.writingQuestion.findUnique({
@@ -282,6 +294,9 @@ export class EssayController {
 
       // Update progress
       await this.progressService.updateProgressAfterEssay(userId, submissionId);
+
+      // Deduct session balance
+      await this.usersService.incrementDailySession(userId, 'writing');
 
       this.logger.log(`Completed assessment for essay ${submissionId}`);
     } catch (error) {

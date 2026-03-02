@@ -142,16 +142,17 @@ export class AuthService {
 
   async validateGoogleUser(googleUser: GoogleUser) {
     console.log('[Auth] Validating Google user:', googleUser.email, googleUser.googleId);
-    
+
     // Find or create user
     let user = await this.usersService.findByGoogleId(googleUser.googleId);
     console.log('[Auth] Found by googleId:', user?.id || 'NOT FOUND');
-    
+    let isNew = false;
+
     if (!user) {
       // Check if user exists with email
       user = await this.usersService.findByEmail(googleUser.email);
       console.log('[Auth] Found by email:', user?.id || 'NOT FOUND');
-      
+
       if (user) {
         // Link Google account to existing user
         user = await this.usersService.linkGoogleAccount(user.id, googleUser.googleId, googleUser.avatarUrl);
@@ -160,10 +161,11 @@ export class AuthService {
         // Create new user
         user = await this.usersService.createFromGoogle(googleUser);
         console.log('[Auth] Created new user:', user.id);
+        isNew = true;
       }
     }
-    
-    return user;
+
+    return { ...user, isNew };
   }
   
   async verifyOtp(email: string, otp: string) {

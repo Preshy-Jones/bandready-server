@@ -61,9 +61,9 @@ export class PracticeController {
     @Body() dto: { questionId: string; part: number },
   ) {
     // Check daily session limit
-    const canStart = await this.practiceService.canUserStartSession(user.id);
+    const canStart = await this.practiceService.canStartSession(user.id);
     if (!canStart) {
-      throw new ForbiddenException('Daily session limit reached. Upgrade to premium for unlimited sessions.');
+      throw new ForbiddenException('Session limit reached. Purchase a session pack or upgrade to premium for more sessions.');
     }
 
     return this.practiceService.createSession(user.id, dto.questionId, dto.part as 1 | 2 | 3);
@@ -151,10 +151,9 @@ export class PracticeController {
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
   ) {
-    const normalizedUser = await this.usersService.syncSubscriptionStatus(user.id);
-
-    if (!normalizedUser || normalizedUser.subscriptionTier !== 'premium') {
-      throw new ForbiddenException('Model answers are a premium feature');
+    const hasPaid = await this.usersService.hasPaidAccess(user.id);
+    if (!hasPaid) {
+      throw new ForbiddenException('Model answers require a premium subscription or session pack.');
     }
 
     return this.practiceService.generateModelAnswer(sessionId, user.id);
@@ -166,10 +165,9 @@ export class PracticeController {
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
   ) {
-    const normalizedUser = await this.usersService.syncSubscriptionStatus(user.id);
-
-    if (!normalizedUser || normalizedUser.subscriptionTier !== 'premium') {
-      throw new ForbiddenException('Enhanced model answers are a premium feature');
+    const hasPaid = await this.usersService.hasPaidAccess(user.id);
+    if (!hasPaid) {
+      throw new ForbiddenException('Enhanced model answers require a premium subscription or session pack.');
     }
 
     return this.practiceService.generateEnhancedModelAnswer(sessionId, user.id);
