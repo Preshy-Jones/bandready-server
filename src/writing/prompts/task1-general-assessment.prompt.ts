@@ -46,14 +46,94 @@ Band 5: Limited range of structures. Frequent grammatical errors.
 4. Word count violations: Under 150 words = cap at Band 5 for Task Achievement
 5. Wrong tone (e.g., informal closing in a formal letter) = cap CC/TA at Band 6.
 6. Missed a bullet point = cap TA at Band 5.
-7. Calculate overall as arithmetic mean, rounded to nearest 0.5.
+7. Valid scores are ONLY: 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0.
+8. Calculate overall as arithmetic mean, rounded to nearest 0.5.
 
-## ERROR DETECTION:
-You must identify and categorize ALL errors into:
+## ERROR CATEGORIES:
 - GRAMMAR: tense_error, subject_verb_agreement, article_misuse, preposition_error, sentence_structure
-- VOCABULARY: weak_vocabulary, word_choice_error, spelling_error, tone_clash (e.g., using slang in a formal letter)
+- VOCABULARY: weak_vocabulary, word_choice_error, spelling_error, tone_clash
 - COHERENCE: missing_discourse_marker, illogical_flow, bad_paragraphing
-- TASK_RESPONSE: missed_bullet_point, wrong_opening_closing, inappropriate_tone, unclear_purpose`;
+- TASK_RESPONSE: missed_bullet_point, wrong_opening_closing, inappropriate_tone, unclear_purpose
+
+## RESPONSE FORMAT
+
+You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no preamble. The response must parse with JSON.parse() directly.
+
+{
+  "scores": {
+    "taskAchievement": <number — whole or half band ONLY>,
+    "coherenceCohesion": <number — whole or half band ONLY>,
+    "lexicalResource": <number — whole or half band ONLY>,
+    "grammaticalRangeAccuracy": <number — whole or half band ONLY>,
+    "overall": <number — average of above four, rounded to nearest 0.5>
+  },
+  "feedback": {
+    "taskAchievement": {
+      "justification": "<2-3 sentences citing specific evidence from the letter>",
+      "strengths": ["<specific strength with evidence>"],
+      "weaknesses": ["<specific weakness with evidence — empty array [] if none>"]
+    },
+    "coherenceCohesion": {
+      "justification": "<2-3 sentences>",
+      "strengths": ["<strength with evidence>"],
+      "weaknesses": ["<weakness with evidence — empty array [] if none>"]
+    },
+    "lexicalResource": {
+      "justification": "<2-3 sentences>",
+      "strengths": ["<strength with evidence>"],
+      "weaknesses": ["<weakness with evidence — empty array [] if none>"]
+    },
+    "grammaticalRangeAccuracy": {
+      "justification": "<2-3 sentences>",
+      "strengths": ["<strength with evidence>"],
+      "weaknesses": ["<weakness with evidence — empty array [] if none>"]
+    }
+  },
+  "annotations": [
+    {
+      "startIndex": <number>,
+      "endIndex": <number>,
+      "color": "<green | yellow | red>",
+      "type": "<task_response | coherence_cohesion | lexical_resource | grammatical_range_accuracy>",
+      "explanation": "<what is good, could improve, or is an error>"
+    }
+  ],
+  "detectedErrors": [
+    {
+      "category": "<GRAMMAR | VOCABULARY | COHERENCE | TASK_RESPONSE>",
+      "specificError": "<error subtype from categories above>",
+      "sentence": "<exact sentence from letter>",
+      "correction": "<corrected version>"
+    }
+  ],
+  "examinerInsights": [
+    {
+      "sentence": "<exact sentence — pick 3-5 key sentences>",
+      "quality": "<strength | weakness | neutral>",
+      "explanation": "<examiner observation>",
+      "bandImpact": "<how this affects the score>"
+    }
+  ],
+  "vocabularySuggestions": [
+    {
+      "original": "<weak word or phrase>",
+      "suggested": "<2-3 stronger alternatives separated by ' / '>",
+      "reason": "<why better>"
+    }
+  ],
+  "priorityFixes": [
+    {
+      "issue": "<what to fix>",
+      "explanation": "<why it matters and how to fix it>",
+      "targetCriterion": "<task_response | coherence_cohesion | lexical_resource | grammatical_range_accuracy>",
+      "currentBand": <number>,
+      "potentialBand": <number>
+    }
+  ],
+  "examinerNotes": "<2-3 sentence summary: overall band, strongest criterion, weakest criterion, top improvement action.>"
+}
+
+CRITICAL: Scores must be whole or half bands only. If any array has no items use []. Respond with ONLY the JSON object.`;
 
 export const generateTask1GeneralAssessmentPrompt = ({
   question,
@@ -71,89 +151,21 @@ export const generateTask1GeneralAssessmentPrompt = ({
   nativeLanguage?: string | null;
 }) => {
   const languageContext = nativeLanguage
-    ? `\n### STUDENT PROFILE\nThe student is a native ${nativeLanguage} speaker. Pay special attention to common grammar transfer errors and vocabulary misuse typical for ${nativeLanguage} to English translation, and provide feedback that specifically addresses these linguistic patterns.\n`
+    ? `\nStudent's native language: ${nativeLanguage}. Pay attention to common ${nativeLanguage}-to-English transfer errors.\n`
     : '';
 
-  return `## ASSESSMENT REQUEST
+  return `Assess this IELTS Writing Task 1 General Training letter.
 ${languageContext}
-### Question Type
-General Training Task 1 - ${questionType} (e.g., formal_letter, semi_formal_letter, informal_letter)
+Letter Type: ${questionType}
+Question/Scenario: "${question}"
+Word Count: ${wordCount}
+Time Spent: ${Math.floor(timeSpent / 60)} minutes
 
-### Question (Scenario and Bullet Points)
-"${question}"
-
-### Report Metadata
-- Word Count: ${wordCount} (Target: 150+)
-- Time Spent: ${Math.floor(timeSpent / 60)} minutes
-
-### Letter
+Letter:
 """
 ${essayText}
 """
 
-## YOUR TASK
-Assess this General Training Task 1 letter with STRICT examiner standards. Return JSON:
-
-\`\`\`json
-{
-  "scores": {
-    "taskAchievement": <number 0-9 in 0.5 increments>,
-    "coherenceCohesion": <number 0-9 in 0.5 increments>,
-    "lexicalResource": <number 0-9 in 0.5 increments>,
-    "grammaticalRangeAccuracy": <number 0-9 in 0.5 increments>,
-    "overall": <number 0-9 in 0.5 increments>
-  },
-  "feedback": {
-    "taskAchievement": "<2-3 sentences on coverage of bullet points, clarity of purpose, and opening/closing formatting>",
-    "coherenceCohesion": "<2-3 sentences on organization, paragraphing, and linking>",
-    "lexicalResource": "<2-3 sentences on vocabulary choice and appropriateness of tone>",
-    "grammaticalRangeAccuracy": "<2-3 sentences on grammar>",
-    "overall": "<3-4 sentences summarizing and stating top priority>"
-  },
-  "annotations": [
-    {
-      "startIndex": <character position>,
-      "endIndex": <character position>,
-      "color": "red" | "yellow" | "green" | "blue",
-      "type": "<error_type from categories above>",
-      "explanation": "<why this is marked>"
-    }
-  ],
-  "examinerInsights": [
-    {
-      "sentence": "<exact sentence from report>",
-      "issue": "<what's wrong>",
-      "bandImpact": "<e.g., 'Writing \\'Hi sir\\' severely impacts Tone, capping TA at 6.0'>"
-    }
-  ],
-  "detectedErrors": [
-    {
-      "category": "GRAMMAR" | "VOCABULARY" | "COHERENCE" | "TASK_RESPONSE",
-      "specificError": "<error_type>",
-      "sentence": "<sentence containing error>",
-      "correction": "<corrected version>"
-    }
-  ],
-  "priorityFixes": [
-    {
-      "issue": "<what to fix>",
-      "explanation": "<why it matters>",
-      "drillType": "<related drill category>"
-    }
-  ],
-  "vocabularySuggestions": [
-    {
-      "original": "<weak/inappropriate phrase>",
-      "suggested": "<Band 8 tone-appropriate alternative>",
-      "context": "<why better>"
-    }
-  ]
-}
-\`\`\`
-
-Be thorough. Every error should be caught. Be strict but fair. Pay special attention to:
-1. Did they cover all 3 bullet points clearly?
-2. Is the tone consistently appropriate for the letter type?
-3. Did they use appropriate opening (Dear...) and closing sign-offs?`;
+Pay special attention to: all 3 bullet points covered, appropriate and consistent tone, correct opening (Dear...) and closing sign-off.`;
 };
 

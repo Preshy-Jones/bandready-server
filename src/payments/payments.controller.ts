@@ -15,10 +15,13 @@ import { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { PaymentsService } from './payments.service';
+import { IsOptional, IsString } from 'class-validator';
 
-type InitializePaymentDto = {
-  plan?: 'monthly' | 'quarterly' | 'yearly';
-};
+export class InitializePaymentDto {
+  @IsOptional()
+  @IsString()
+  plan?: string;
+}
 
 @Controller('payments')
 export class PaymentsController {

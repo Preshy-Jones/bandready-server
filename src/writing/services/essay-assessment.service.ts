@@ -1,7 +1,9 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  ESSAY_ASSESSMENT_PROVIDER,
+  IEssayAssessmentProvider,
+} from '../interfaces/essay-assessment-provider.interface';
 import {
   WRITING_SYSTEM_PROMPT,
   generateTask2AssessmentPrompt,
@@ -14,25 +16,18 @@ import {
   TASK1_GENERAL_SYSTEM_PROMPT,
   generateTask1GeneralAssessmentPrompt,
 } from '../prompts/task1-general-assessment.prompt';
-import { EssayFeedbackResponse } from '../dto/essay-feedback.dto';
+import { EssayCriterionFeedback, EssayFeedbackResponse } from '../dto/essay-feedback.dto';
 import { TaskType, ExamType } from '@prisma/client';
 
 @Injectable()
 export class EssayAssessmentService {
   private readonly logger = new Logger(EssayAssessmentService.name);
-  private anthropic: Anthropic;
 
   constructor(
     private prisma: PrismaService,
-    private configService: ConfigService,
-  ) {
-    const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
-      this.logger.error('ANTHROPIC_API_KEY not found in environment variables');
-      throw new Error('ANTHROPIC_API_KEY is required');
-    }
-    this.anthropic = new Anthropic({ apiKey });
-  }
+    @Inject(ESSAY_ASSESSMENT_PROVIDER)
+    private provider: IEssayAssessmentProvider,
+  ) {}
 
   /**
    * Assess an essay using Claude API
@@ -85,39 +80,10 @@ export class EssayAssessmentService {
     }
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 4096,
-        temperature: 0.3, // Lower temperature for more consistent grading
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: userPrompt,
-          },
-        ],
-      });
-
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new BadRequestException('Unexpected response format from Claude');
-      }
-
-      console.log("content response", content);
-      
-
-      // Extract JSON from the response
-      const jsonMatch = content.text.match(/```json\s*([\s\S]*?)\s*```/);
-      if (!jsonMatch) {
-        this.logger.error('Failed to extract JSON from Claude response');
-        this.logger.debug('Response:', content.text);
-        throw new BadRequestException('Failed to parse assessment response');
-      }
-
-      const assessmentData: EssayFeedbackResponse = JSON.parse(jsonMatch[1]);
-
-      console.log("assessmentData", assessmentData);
-      
+      const assessmentData: EssayFeedbackResponse = await this.provider.assess(
+        systemPrompt,
+        userPrompt,
+      );
 
       // Validate the response structure
       if (
@@ -162,17 +128,19 @@ export class EssayAssessmentService {
       },
     });
 
-    // Create feedback record
+    // Create feedback record — criterion feedback stored as JSON strings for backward compat
     await this.prisma.essayFeedback.create({
       data: {
         essayId,
-        taskResponseFeedback: isTask1
-          ? feedback.feedback?.taskAchievement || ''
-          : feedback.feedback?.taskResponse || '',
-        coherenceCohesionFeedback: feedback.feedback?.coherenceCohesion || '',
-        lexicalResourceFeedback: feedback.feedback?.lexicalResource || '',
-        grammarAccuracyFeedback: feedback.feedback?.grammaticalRangeAccuracy || '',
-        overallFeedback: feedback.feedback?.overall || '',
+        taskResponseFeedback: JSON.stringify(
+          isTask1
+            ? feedback.feedback?.taskAchievement || {}
+            : feedback.feedback?.taskResponse || {},
+        ),
+        coherenceCohesionFeedback: JSON.stringify(feedback.feedback?.coherenceCohesion || {}),
+        lexicalResourceFeedback: JSON.stringify(feedback.feedback?.lexicalResource || {}),
+        grammarAccuracyFeedback: JSON.stringify(feedback.feedback?.grammaticalRangeAccuracy || {}),
+        overallFeedback: feedback.examinerNotes || '',
         annotations: feedback.annotations as any,
         examinerInsights: feedback.examinerInsights as any,
         priorityFixes: feedback.priorityFixes as any,
@@ -207,8 +175,8 @@ export class EssayAssessmentService {
     });
 
     if (existingFeedback) {
-      // Return existing feedback with actual scores from the submission
       const isTask1 = submission.question.taskType === 'TASK1';
+      const taskCriterion = parseCriterionFeedback(existingFeedback.taskResponseFeedback);
 
       return {
         scores: {
@@ -222,18 +190,13 @@ export class EssayAssessmentService {
         },
         feedback: {
           ...(isTask1
-            ? {
-                taskAchievement:
-                  existingFeedback.taskResponseFeedback,
-              }
-            : {
-                taskResponse: existingFeedback.taskResponseFeedback,
-              }),
-          coherenceCohesion: existingFeedback.coherenceCohesionFeedback,
-          lexicalResource: existingFeedback.lexicalResourceFeedback,
-          grammaticalRangeAccuracy: existingFeedback.grammarAccuracyFeedback,
-          overall: existingFeedback.overallFeedback,
+            ? { taskAchievement: taskCriterion }
+            : { taskResponse: taskCriterion }),
+          coherenceCohesion: parseCriterionFeedback(existingFeedback.coherenceCohesionFeedback),
+          lexicalResource: parseCriterionFeedback(existingFeedback.lexicalResourceFeedback),
+          grammaticalRangeAccuracy: parseCriterionFeedback(existingFeedback.grammarAccuracyFeedback),
         },
+        examinerNotes: existingFeedback.overallFeedback || undefined,
         annotations: existingFeedback.annotations as any,
         examinerInsights: existingFeedback.examinerInsights as any,
         detectedErrors: existingFeedback.detectedErrors as any,
@@ -265,4 +228,17 @@ export class EssayAssessmentService {
 
     return feedback;
   }
+}
+
+// Handles both old plain-text records and new JSON criterion objects
+function parseCriterionFeedback(raw: string): EssayCriterionFeedback {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && 'justification' in parsed) {
+      return parsed as EssayCriterionFeedback;
+    }
+  } catch {
+    // old format — wrap plain string in new shape
+  }
+  return { justification: raw || '', strengths: [], weaknesses: [] };
 }
