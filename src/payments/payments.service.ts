@@ -14,10 +14,8 @@ import { PaymentStatus } from '@prisma/client';
 type PlanKey = string;
 type PaymentProvider = 'paystack' | 'paddle';
 
-// Countries where Paystack is available and preferred
-const PAYSTACK_COUNTRIES = new Set([
-  'NG', 'GH', 'ZA', 'KE', // Nigeria, Ghana, South Africa, Kenya
-]);
+// Countries where Paystack is available and preferred (Nigeria only — pack-based model)
+const PAYSTACK_COUNTRIES = new Set(['NG']);
 
 type PaystackInitializeResponse = {
   status: boolean;
@@ -57,14 +55,8 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    // Paystack plans (NGN Kobo)
+    // Paystack plans (NGN Kobo) — Session packs only, Nigeria only
     this.paystackPlanConfig = {
-      // Legacy Subscriptions
-      monthly: { amountKobo: 500000, durationDays: 30 },
-      quarterly: { amountKobo: 1350000, durationDays: 90 },
-      yearly: { amountKobo: 5000000, durationDays: 365 },
-      
-      // New Session Packs
       starter: { amountKobo: 75000, durationDays: 0, sessionCount: 5, writingCount: 8 },
       standard: { amountKobo: 200000, durationDays: 0, sessionCount: 15, writingCount: 25 },
       pro: { amountKobo: 450000, durationDays: 0, sessionCount: 40, writingCount: 65 },
@@ -113,7 +105,7 @@ export class PaymentsService {
     };
   }
 
-  async initializePaystackTransaction(userId: string, plan: PlanKey = 'monthly') {
+  async initializePaystackTransaction(userId: string, plan: PlanKey = 'starter') {
     const paystackSecretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY');
     if (!paystackSecretKey) {
       throw new InternalServerErrorException('Paystack is not configured');
@@ -121,11 +113,15 @@ export class PaymentsService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true },
+      select: { id: true, email: true, fullName: true, country: true },
     });
 
     if (!user) {
       throw new BadRequestException('User not found');
+    }
+
+    if (!user.country || !PAYSTACK_COUNTRIES.has(user.country.toUpperCase())) {
+      throw new ForbiddenException('Paystack payments are only available in Nigeria');
     }
 
     const selectedPlan = this.paystackPlanConfig[plan];
@@ -341,8 +337,8 @@ export class PaymentsService {
       throw new ForbiddenException('This payment does not belong to the authenticated user');
     }
 
-    const plan = verification.metadata?.plan || 'monthly';
-    const configuredPlan = this.paystackPlanConfig[plan] || this.paystackPlanConfig.monthly;
+    const plan = verification.metadata?.plan || 'starter';
+    const configuredPlan = this.paystackPlanConfig[plan] || this.paystackPlanConfig.starter;
     const requiredAmount = configuredPlan.amountKobo;
 
     if (verification.amount < requiredAmount) {
@@ -456,11 +452,15 @@ export class PaymentsService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true, paddleCustomerId: true },
+      select: { id: true, email: true, fullName: true, paddleCustomerId: true, country: true },
     });
 
     if (!user) {
       throw new BadRequestException('User not found');
+    }
+
+    if (user.country && PAYSTACK_COUNTRIES.has(user.country.toUpperCase())) {
+      throw new ForbiddenException('Nigerian users must purchase session packs, not subscriptions');
     }
 
     const selectedPlan = this.paddlePlanConfig[plan];

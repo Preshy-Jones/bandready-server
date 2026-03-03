@@ -178,11 +178,8 @@ export class UsersService {
           data: { speakingBalance: { decrement: 1 } },
         });
       }
-      // Otherwise, consume a daily free session (max 3)
-      return this.prisma.user.update({
-        where: { id: userId },
-        data: { dailySpeakingUsed: { increment: 1 } },
-      });
+      // No balance and not premium — should not be reachable since canStartSession blocks access
+      return user;
     }
 
     if (sessionType === 'writing') {
@@ -225,22 +222,16 @@ export class UsersService {
     const normalizedUser = await this.syncSubscriptionStatus(userId);
     if (!normalizedUser) return false;
 
-    const user = await this.resetDailySessionCount(normalizedUser.id);
+    const user = await this.prisma.user.findUnique({ where: { id: normalizedUser.id } });
     if (!user) return false;
-    
+
     if (sessionType === 'speaking') {
-      // Premium users (e.g. global subscriptions) have unlimited speaking sessions
       if (this.isPremiumActive(user)) return true;
-      // Users with a speaking balance can start a session
-      if (user.speakingBalance > 0) return true;
-      // Free users get 3 speaking sessions per day
-      return user.dailySpeakingUsed < 3;
+      return user.speakingBalance > 0;
     }
 
     if (sessionType === 'writing') {
-       // Users with a writing balance can start an essay test
-       // There are NO free daily sessions for writing, nor unlimited tiers.
-       return user.writingBalance > 0;
+      return this.isPremiumActive(user) || user.writingBalance > 0;
     }
 
     return false;

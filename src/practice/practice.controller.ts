@@ -31,6 +31,7 @@ export class PracticeController {
   // ========================
 
   @Get('topics/:part')
+  @UseGuards(AuthGuard('jwt'))
   async getTopics(@Param('part', ParseIntPipe) part: number) {
     if (part < 1 || part > 3) {
       throw new BadRequestException('Part must be 1, 2, or 3');
@@ -39,6 +40,7 @@ export class PracticeController {
   }
 
   @Get('question/:part')
+  @UseGuards(AuthGuard('jwt'))
   async getQuestion(
     @Param('part', ParseIntPipe) part: number,
     @Query('topic') topic?: string,

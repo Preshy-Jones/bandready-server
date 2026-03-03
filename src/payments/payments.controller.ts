@@ -61,7 +61,7 @@ export class PaymentsController {
     @CurrentUser() user: User,
     @Body() dto: InitializePaymentDto,
   ) {
-    return this.paymentsService.initializePaystackTransaction(user.id, dto?.plan || 'monthly');
+    return this.paymentsService.initializePaystackTransaction(user.id, dto?.plan || 'starter');
   }
 
   @Get('paystack/verify/:reference')

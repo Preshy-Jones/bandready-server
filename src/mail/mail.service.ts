@@ -126,4 +126,66 @@ export class MailService {
       return false;
     }
   }
+
+  async sendSubscriptionExpiryReminder(email: string, fullName: string | null, daysLeft: number): Promise<boolean> {
+    const firstName = fullName?.split(' ')[0] || 'there';
+
+    let subject = '';
+    let messageHeadline = '';
+    let body = '';
+    let ctaText = '';
+
+    if (daysLeft === 3) {
+      subject = 'Your BandReady Premium expires in 3 days';
+      messageHeadline = 'Your Premium Expires Soon';
+      body = 'Your BandReady Premium subscription expires in 3 days. Renew now to keep your unlimited practice sessions and AI-powered feedback without interruption.';
+      ctaText = 'Renew Premium Now';
+    } else if (daysLeft === 1) {
+      subject = 'Last day of your BandReady Premium';
+      messageHeadline = 'Last Day of Premium';
+      body = 'Today is the last day of your BandReady Premium subscription. Renew immediately to avoid losing access to unlimited sessions and AI feedback.';
+      ctaText = 'Renew Before It Expires';
+    } else {
+      return false;
+    }
+
+    this.logger.log(`Attempting to send subscription expiry reminder (${daysLeft} days) to ${email}`);
+
+    if (!this.configService.get<string>('RESEND_API_KEY')) {
+      this.logger.warn(`[DEV MODE] Would send ${daysLeft}-day expiry reminder to ${email}`);
+      return true;
+    }
+
+    try {
+      const data = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject,
+        html: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2E3192;">${messageHeadline}</h2>
+            <p>Hi ${firstName},</p>
+            <p>${body}</p>
+
+            <div style="background-color: #F1F5F9; border-left: 4px solid #2E3192; padding: 15px; margin: 25px 0;">
+              <p style="margin: 0; color: #1E293B; font-weight: 500;">Don't lose your progress momentum — renew and keep practising every day.</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://bandready.com/pricing" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">${ctaText}</a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
+          </div>
+        `,
+      });
+
+      this.logger.log(`Successfully sent ${daysLeft}-day expiry reminder to ${email}. ID: ${data.data?.id}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send ${daysLeft}-day expiry reminder to ${email}`, error);
+      return false;
+    }
+  }
 }
