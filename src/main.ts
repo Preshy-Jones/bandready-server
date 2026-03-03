@@ -9,6 +9,7 @@ async function bootstrap() {
   const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:3000',
     process.env.ADMIN_URL || 'http://localhost:3002',
+    "https://bandready.app"
   ].filter(Boolean);
 
   app.enableCors({
