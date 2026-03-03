@@ -13,7 +13,7 @@ export class MailService {
     this.resend = new Resend(resendApiKey || 're_mock_key');
     
     // In production, use your verified domain
-    this.fromEmail = this.configService.get<string>('MAIL_FROM') || 'BandReady <onboarding@resend.dev>';
+    this.fromEmail = this.configService.get<string>('MAIL_FROM') || 'BandReady <info@bandready.app>';
   }
 
   async sendVerificationOtp(email: string, fullName: string, otp: string): Promise<boolean> {
