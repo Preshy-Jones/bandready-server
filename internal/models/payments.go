@@ -60,3 +60,5 @@ type Waitlist struct {
 }
 
 func (Waitlist) TableName() string { return "waitlist" }
+
+// waitlistModelAdded
