@@ -86,3 +86,5 @@ func (t *TaskScheduler) handleSubscriptionExpiryReminders() {
 		log.Printf("Sent subscription expiry reminders (%d days) to %d users", days, len(users))
 	}
 }
+
+// subscriptionExpiryAdded
