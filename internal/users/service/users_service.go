@@ -148,3 +148,5 @@ func (s *UsersService) AddCredits(userID string, amount int) error {
 		Where("id = ?", userID).
 		UpdateColumn("credit_balance", gorm.Expr("credit_balance + ?", amount)).Error
 }
+
+// freeTierRemoved - creditBalance required
