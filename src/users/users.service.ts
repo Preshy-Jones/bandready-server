@@ -31,7 +31,7 @@ export class UsersService {
       return this.prisma.user.update({
         where: { id: userId },
         data: {
-          subscriptionTier: 'free',
+          subscriptionTier: 'none',
           subscriptionExpiresAt: null,
         },
       });
@@ -137,28 +137,6 @@ export class UsersService {
     console.log('[UsersService] Update result - targetBandScore:', result.targetBandScore);
     
     return result;
-  }
-
-  async resetDailySessionCount(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    
-    if (!user) return null;
-    
-    const now = new Date();
-    const resetAt = new Date(user.dailySessionsResetAt);
-    
-    // Reset if it's a new day
-    if (now.toDateString() !== resetAt.toDateString()) {
-      return this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          dailySpeakingUsed: 0,
-          dailySessionsResetAt: now,
-        },
-      });
-    }
-    
-    return user;
   }
 
   async incrementDailySession(userId: string, sessionType: 'speaking' | 'writing' = 'speaking') {

@@ -79,8 +79,6 @@ export class AuthController {
       examType: req.user.examType,
       subscriptionTier: req.user.subscriptionTier,
       subscriptionExpiresAt: req.user.subscriptionExpiresAt,
-      dailySessionsUsed: req.user.dailySessionsUsed,
-      sessionBalance: req.user.sessionBalance,
       country: req.user.country,
       speakingBalance: req.user.speakingBalance,
       writingBalance: req.user.writingBalance,

@@ -55,7 +55,7 @@ export class AdminService {
       verifiedUsers,
       unverifiedUsers: totalUsers - verifiedUsers,
       premiumUsers,
-      freeUsers: totalUsers - premiumUsers,
+      unpaidUsers: totalUsers - premiumUsers,
       newUsersThisMonth,
       activeUsersWeek,
       totalSpeakingSessions,

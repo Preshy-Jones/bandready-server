@@ -25,7 +25,7 @@ model User {
   nativeLanguage        String?   @map("native_language")
   country               String?
   examType              ExamType  @default(ACADEMIC) @map("exam_type")
-  subscriptionTier      String    @default("free") @map("subscription_tier")
+  subscriptionTier      String    @default("none") @map("subscription_tier")
   subscriptionExpiresAt DateTime? @map("subscription_expires_at")
   paystackCustomerCode  String?   @map("paystack_customer_code")
   paddleCustomerId      String?   @map("paddle_customer_id")
@@ -35,8 +35,6 @@ model User {
   emailVerificationOtpExpiry DateTime? @map("email_verification_otp_expiry")
   speakingBalance       Int       @default(0) @map("speaking_balance")
   writingBalance        Int       @default(0) @map("writing_balance")
-  dailySpeakingUsed     Int       @default(0) @map("daily_speaking_used")
-  dailySessionsResetAt  DateTime  @default(now()) @map("daily_sessions_reset_at")
   role                  Role      @default(USER)
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")

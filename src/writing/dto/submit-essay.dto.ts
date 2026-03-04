@@ -27,7 +27,22 @@ export class GetQuestionsDto {
   subType?: string;
 }
 
+// Diagnostic is now Task 2 only (single essay)
 export class SubmitDiagnosticDto {
+  @IsString()
+  questionId: string;
+
+  @IsString()
+  @MinLength(200)
+  essay: string;
+
+  @IsInt()
+  @Min(0)
+  timeSpent: number;
+}
+
+// Full Writing Mock Test (Task 1 + Task 2)
+export class SubmitWritingMockDto {
   @IsString()
   task1QuestionId: string;
 
@@ -49,4 +64,7 @@ export class SubmitDiagnosticDto {
   @IsInt()
   @Min(0)
   task2TimeSpent: number;
+
+  @IsString()
+  mode: 'flexible' | 'strict';
 }

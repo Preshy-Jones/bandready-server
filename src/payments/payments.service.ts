@@ -256,7 +256,7 @@ export class PaymentsService {
     return {
       reference: verification.reference,
       status: 'success',
-      subscriptionTier: updatedUser?.subscriptionTier || 'free',
+      subscriptionTier: updatedUser?.subscriptionTier || 'none',
       subscriptionExpiresAt: updatedUser?.subscriptionExpiresAt || null,
       speakingBalance: updatedUser?.speakingBalance || 0,
       writingBalance: updatedUser?.writingBalance || 0,
@@ -585,7 +585,9 @@ export class PaymentsService {
     const signedPayload = `${ts}:${rawBody.toString('utf-8')}`;
     const expectedHash = createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
 
-    if (expectedHash !== h1) {
+    const expectedBuffer = Buffer.from(expectedHash);
+    const h1Buffer = Buffer.from(h1);
+    if (expectedBuffer.length !== h1Buffer.length || !timingSafeEqual(expectedBuffer, h1Buffer)) {
       throw new UnauthorizedException('Invalid webhook signature');
     }
 

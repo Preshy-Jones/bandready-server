@@ -8,6 +8,7 @@ import { DiagnosticController } from './controllers/diagnostic.controller';
 import { EssayController } from './controllers/essay.controller';
 import { DrillController } from './controllers/drill.controller';
 import { ProgressController } from './controllers/progress.controller';
+import { MockWritingController } from './controllers/mock-writing.controller';
 
 // Services
 import { EssayAssessmentService } from './services/essay-assessment.service';
@@ -43,6 +44,7 @@ const essayProviderFactory = {
     EssayController,
     DrillController,
     ProgressController,
+    MockWritingController,
   ],
   providers: [
     essayProviderFactory,
