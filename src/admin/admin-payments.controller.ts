@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
@@ -26,5 +26,15 @@ export class AdminPaymentsController {
   @Get('revenue')
   async getRevenueStats() {
     return this.adminService.getRevenueStats();
+  }
+
+  @Get('settings')
+  async getPaymentSettings() {
+    return this.adminService.getAppSetting('global_payment_provider');
+  }
+
+  @Put('settings')
+  async updatePaymentSettings(@Body() dto: { provider: 'paddle' | 'polar' }) {
+    return this.adminService.setAppSetting('global_payment_provider', dto.provider);
   }
 }

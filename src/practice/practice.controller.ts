@@ -31,6 +31,7 @@ export class PracticeController {
   // ========================
 
   @Get('topics/:part')
+  @UseGuards(AuthGuard('jwt'))
   async getTopics(@Param('part', ParseIntPipe) part: number) {
     if (part < 1 || part > 3) {
       throw new BadRequestException('Part must be 1, 2, or 3');
@@ -39,6 +40,7 @@ export class PracticeController {
   }
 
   @Get('question/:part')
+  @UseGuards(AuthGuard('jwt'))
   async getQuestion(
     @Param('part', ParseIntPipe) part: number,
     @Query('topic') topic?: string,
@@ -60,10 +62,10 @@ export class PracticeController {
     @CurrentUser() user: User,
     @Body() dto: { questionId: string; part: number },
   ) {
-    // Check daily session limit
+    // Check session access
     const canStart = await this.practiceService.canStartSession(user.id);
     if (!canStart) {
-      throw new ForbiddenException('Session limit reached. Purchase a session pack or upgrade to premium for more sessions.');
+      throw new ForbiddenException('No sessions remaining. Purchase a session pack or upgrade to premium.');
     }
 
     return this.practiceService.createSession(user.id, dto.questionId, dto.part as 1 | 2 | 3);

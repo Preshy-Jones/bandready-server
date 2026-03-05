@@ -52,14 +52,94 @@ Band 5: Limited range of structures. Attempts complex sentences but these tend t
 4. Word count violations: Under 150 words = cap at Band 5 for Task Achievement
 5. Includes opinion/speculation = cap at Band 5 for Task Achievement
 6. No overview = cap at Band 6 for Task Achievement
-7. Calculate overall as arithmetic mean, rounded to nearest 0.5
+7. Valid scores are ONLY: 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0.
+8. Calculate overall as arithmetic mean, rounded to nearest 0.5.
 
-## ERROR DETECTION:
-You must identify and categorize ALL errors into:
+## ERROR CATEGORIES:
 - GRAMMAR: article_misuse, subject_verb_agreement, tense_error, comma_splice, run_on_sentence, fragment, preposition_error
 - VOCABULARY: weak_vocabulary, word_choice_error, repetition, spelling_error, inappropriate_paraphrasing
 - COHERENCE: missing_discourse_marker, unclear_reference, paragraph_break_needed, illogical_flow
-- TASK_RESPONSE: no_overview, opinion_included, irrelevant_detail, inaccurate_data, no_comparisons, mechanical_description`;
+- TASK_RESPONSE: no_overview, opinion_included, irrelevant_detail, inaccurate_data, no_comparisons, mechanical_description
+
+## RESPONSE FORMAT
+
+You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no preamble. The response must parse with JSON.parse() directly.
+
+{
+  "scores": {
+    "taskAchievement": <number — whole or half band ONLY>,
+    "coherenceCohesion": <number — whole or half band ONLY>,
+    "lexicalResource": <number — whole or half band ONLY>,
+    "grammaticalRangeAccuracy": <number — whole or half band ONLY>,
+    "overall": <number — average of above four, rounded to nearest 0.5>
+  },
+  "feedback": {
+    "taskAchievement": {
+      "justification": "<2-3 sentences citing specific evidence from the report>",
+      "strengths": ["<specific strength with evidence>"],
+      "weaknesses": ["<specific weakness with evidence — empty array [] if none>"]
+    },
+    "coherenceCohesion": {
+      "justification": "<2-3 sentences>",
+      "strengths": ["<strength with evidence>"],
+      "weaknesses": ["<weakness with evidence — empty array [] if none>"]
+    },
+    "lexicalResource": {
+      "justification": "<2-3 sentences>",
+      "strengths": ["<strength with evidence>"],
+      "weaknesses": ["<weakness with evidence — empty array [] if none>"]
+    },
+    "grammaticalRangeAccuracy": {
+      "justification": "<2-3 sentences>",
+      "strengths": ["<strength with evidence>"],
+      "weaknesses": ["<weakness with evidence — empty array [] if none>"]
+    }
+  },
+  "annotations": [
+    {
+      "startIndex": <number>,
+      "endIndex": <number>,
+      "color": "<green | yellow | red>",
+      "type": "<task_response | coherence_cohesion | lexical_resource | grammatical_range_accuracy>",
+      "explanation": "<what is good, could improve, or is an error>"
+    }
+  ],
+  "detectedErrors": [
+    {
+      "category": "<GRAMMAR | VOCABULARY | COHERENCE | TASK_RESPONSE>",
+      "specificError": "<error subtype from categories above>",
+      "sentence": "<exact sentence from report>",
+      "correction": "<corrected version>"
+    }
+  ],
+  "examinerInsights": [
+    {
+      "sentence": "<exact sentence — pick 3-5 key sentences>",
+      "quality": "<strength | weakness | neutral>",
+      "explanation": "<examiner observation>",
+      "bandImpact": "<how this affects the score>"
+    }
+  ],
+  "vocabularySuggestions": [
+    {
+      "original": "<weak word or phrase>",
+      "suggested": "<2-3 stronger alternatives separated by ' / '>",
+      "reason": "<why better>"
+    }
+  ],
+  "priorityFixes": [
+    {
+      "issue": "<what to fix>",
+      "explanation": "<why it matters and how to fix it>",
+      "targetCriterion": "<task_response | coherence_cohesion | lexical_resource | grammatical_range_accuracy>",
+      "currentBand": <number>,
+      "potentialBand": <number>
+    }
+  ],
+  "examinerNotes": "<2-3 sentence summary: overall band, strongest criterion, weakest criterion, top improvement action.>"
+}
+
+CRITICAL: Scores must be whole or half bands only. If any array has no items use []. Respond with ONLY the JSON object.`;
 
 export const generateTask1AssessmentPrompt = ({
   question,
@@ -76,90 +156,21 @@ export const generateTask1AssessmentPrompt = ({
   timeSpent: number;
   nativeLanguage?: string | null;
 }) => {
-  const languageContext = nativeLanguage
-    ? `\n### STUDENT PROFILE\nThe student is a native ${nativeLanguage} speaker. Pay special attention to common grammar transfer errors and vocabulary misuse typical for ${nativeLanguage} to English translation, and provide feedback that specifically addresses these linguistic patterns.\n`
+  const languageContext2 = nativeLanguage
+    ? `\nStudent's native language: ${nativeLanguage}. Pay attention to common ${nativeLanguage}-to-English transfer errors.\n`
     : '';
 
-  return `## ASSESSMENT REQUEST
-${languageContext}
-### Question Type
-Task 1 ${questionType} (e.g., line_graph, bar_chart, pie_chart, table, process, map)
+  return `Assess this IELTS Writing Task 1 Academic report.
+${languageContext2}
+Chart/Graph Type: ${questionType}
+Question: "${question}"
+Word Count: ${wordCount}
+Time Spent: ${Math.floor(timeSpent / 60)} minutes
 
-### Question
-"${question}"
-
-### Report Metadata
-- Word Count: ${wordCount} (Target: 150+)
-- Time Spent: ${Math.floor(timeSpent / 60)} minutes
-
-### Report
+Report:
 """
 ${essayText}
 """
 
-## YOUR TASK
-Assess this Task 1 report with STRICT examiner standards. Return JSON:
-
-\`\`\`json
-{
-  "scores": {
-    "taskAchievement": <number 0-9 in 0.5 increments>,
-    "coherenceCohesion": <number 0-9 in 0.5 increments>,
-    "lexicalResource": <number 0-9 in 0.5 increments>,
-    "grammaticalRangeAccuracy": <number 0-9 in 0.5 increments>,
-    "overall": <number 0-9 in 0.5 increments>
-  },
-  "feedback": {
-    "taskAchievement": "<2-3 sentences on how well task was achieved (overview, key features, comparisons)>",
-    "coherenceCohesion": "<2-3 sentences on organization and linking>",
-    "lexicalResource": "<2-3 sentences on vocabulary with examples>",
-    "grammaticalRangeAccuracy": "<2-3 sentences on grammar with examples>",
-    "overall": "<3-4 sentences summarizing and stating top priority>"
-  },
-  "annotations": [
-    {
-      "startIndex": <character position>,
-      "endIndex": <character position>,
-      "color": "red" | "yellow" | "green" | "blue",
-      "type": "<error_type from categories above>",
-      "explanation": "<why this is marked>"
-    }
-  ],
-  "examinerInsights": [
-    {
-      "sentence": "<exact sentence from report>",
-      "issue": "<what's wrong>",
-      "bandImpact": "<e.g., 'This caps Task Achievement at 6.0 because...'>"
-    }
-  ],
-  "detectedErrors": [
-    {
-      "category": "GRAMMAR" | "VOCABULARY" | "COHERENCE" | "TASK_RESPONSE",
-      "specificError": "<error_type>",
-      "sentence": "<sentence containing error>",
-      "correction": "<corrected version>"
-    }
-  ],
-  "priorityFixes": [
-    {
-      "issue": "<what to fix>",
-      "explanation": "<why it matters>",
-      "drillType": "<related drill category>"
-    }
-  ],
-  "vocabularySuggestions": [
-    {
-      "original": "<weak phrase>",
-      "suggested": "<Band 8 alternative>",
-      "context": "<why better>"
-    }
-  ]
-}
-\`\`\`
-
-Be thorough. Every error should be caught. Be strict but fair. Pay special attention to:
-1. Presence and quality of overview
-2. Accurate data reporting (no made-up numbers)
-3. Relevant comparisons
-4. Avoidance of opinion/speculation`;
+Pay special attention to: overview presence and quality, accurate data reporting, relevant comparisons, avoidance of opinion/speculation.`;
 };

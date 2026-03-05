@@ -1,10 +1,12 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DrillType, WeaknessCategory, Difficulty } from '@prisma/client';
 import { generateDrillFeedbackPrompt } from '../prompts/drill-feedback.prompt';
 import { DrillFeedbackResponse } from '../dto/drill-submission.dto';
+
+const FREE_DAILY_DRILL_LIMIT = 5;
 
 @Injectable()
 export class DrillService {
@@ -82,11 +84,33 @@ export class DrillService {
   ): Promise<DrillFeedbackResponse> {
     const drill = await this.getDrillById(drillId);
 
-    // Fetch user for personalized feedback
-    const userExtended = await this.prisma.user.findUnique({
+    // --- Drill access gating ---
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { nativeLanguage: true },
+      select: { nativeLanguage: true, drillsExpireAt: true },
     });
+
+    // Check if user has unlimited drill access (active drillsExpireAt)
+    const hasUnlimitedDrills = user?.drillsExpireAt && user.drillsExpireAt > new Date();
+
+    if (!hasUnlimitedDrills) {
+      // Enforce free daily drill limit
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const todayAttempts = await this.prisma.drillAttempt.count({
+        where: {
+          userId,
+          attemptedAt: { gte: startOfDay },
+        },
+      });
+
+      if (todayAttempts >= FREE_DAILY_DRILL_LIMIT) {
+        throw new ForbiddenException(
+          `Daily drill limit reached (${FREE_DAILY_DRILL_LIMIT}/day). Upgrade your pack for unlimited drills.`,
+        );
+      }
+    }
 
     // Simple correctness check (can be enhanced with AI)
     const isCorrect = this.checkAnswer(userAnswer, drill.correctAnswer);
@@ -108,7 +132,7 @@ export class DrillService {
     // Generate AI feedback if answer is incorrect and Claude is available
     if (!isCorrect && this.anthropic) {
       try {
-        const aiFeedback = await this.generateAIFeedback(drill, userAnswer, userExtended?.nativeLanguage);
+        const aiFeedback = await this.generateAIFeedback(drill, userAnswer, user?.nativeLanguage);
         return {
           isCorrect: false,
           ...aiFeedback,

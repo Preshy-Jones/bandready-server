@@ -55,7 +55,7 @@ export class AdminService {
       verifiedUsers,
       unverifiedUsers: totalUsers - verifiedUsers,
       premiumUsers,
-      freeUsers: totalUsers - premiumUsers,
+      unpaidUsers: totalUsers - premiumUsers,
       newUsersThisMonth,
       activeUsersWeek,
       totalSpeakingSessions,
@@ -367,6 +367,21 @@ export class AdminService {
       transactions,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  // ─── App Settings ──────────────────────────────────────────
+
+  async getAppSetting(key: string) {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key } });
+    return { key, value: setting?.value ?? null };
+  }
+
+  async setAppSetting(key: string, value: string) {
+    return this.prisma.appSetting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    });
   }
 
   async getRevenueStats() {

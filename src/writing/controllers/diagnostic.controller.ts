@@ -27,38 +27,26 @@ export class DiagnosticController {
   ) {}
 
   /**
-   * Start diagnostic test - returns Task 1 and Task 2 questions
+   * Start diagnostic test - returns a single Task 2 question
    */
   @Post('start')
   async startDiagnostic() {
-    // Get random Task 1 and Task 2 questions
-    const [task1Count, task2Count] = await Promise.all([
-      this.prisma.writingQuestion.count({ where: { taskType: 'TASK1', isActive: true } }),
-      this.prisma.writingQuestion.count({ where: { taskType: 'TASK2', isActive: true } }),
-    ]);
+    const task2Count = await this.prisma.writingQuestion.count({
+      where: { taskType: 'TASK2', isActive: true },
+    });
 
-    const task1Offset = task1Count > 0 ? Math.floor(Math.random() * task1Count) : 0;
     const task2Offset = task2Count > 0 ? Math.floor(Math.random() * task2Count) : 0;
 
-    const [task1Question, task2Question] = await Promise.all([
-      this.prisma.writingQuestion.findFirst({
-        where: { taskType: 'TASK1', isActive: true },
-        skip: task1Offset,
-      }),
-      this.prisma.writingQuestion.findFirst({
-        where: { taskType: 'TASK2', isActive: true },
-        skip: task2Offset,
-      }),
-    ]);
+    const question = await this.prisma.writingQuestion.findFirst({
+      where: { taskType: 'TASK2', isActive: true },
+      skip: task2Offset,
+    });
 
-    return {
-      task1Question,
-      task2Question,
-    };
+    return { question };
   }
 
   /**
-   * Submit diagnostic test - both Task 1 and Task 2 essays
+   * Submit diagnostic test - single Task 2 essay
    */
   @Post('submit')
   async submitDiagnostic(
@@ -67,43 +55,25 @@ export class DiagnosticController {
   ) {
     this.logger.log(`Submitting diagnostic for user ${user.id}`);
 
-    // Get questions using IDs from the DTO (sent by the start endpoint)
-    const [task1Question, task2Question] = await Promise.all([
-      this.prisma.writingQuestion.findUnique({
-        where: { id: dto.task1QuestionId },
-      }),
-      this.prisma.writingQuestion.findUnique({
-        where: { id: dto.task2QuestionId },
-      }),
-    ]);
+    const question = await this.prisma.writingQuestion.findUnique({
+      where: { id: dto.questionId },
+    });
 
-    if (!task1Question || !task2Question) {
-      throw new Error('Diagnostic questions not found');
+    if (!question) {
+      throw new Error('Diagnostic question not found');
     }
 
-    // Create essay submissions
-    const [task1Submission, task2Submission] = await Promise.all([
-      this.prisma.essaySubmission.create({
-        data: {
-          userId: user.id,
-          questionId: task1Question.id,
-          essayText: dto.task1Essay,
-          wordCount: dto.task1Essay.split(/\s+/).length,
-          timeSpentSeconds: dto.task1TimeSpent,
-          sessionType: 'DIAGNOSTIC',
-        },
-      }),
-      this.prisma.essaySubmission.create({
-        data: {
-          userId: user.id,
-          questionId: task2Question.id,
-          essayText: dto.task2Essay,
-          wordCount: dto.task2Essay.split(/\s+/).length,
-          timeSpentSeconds: dto.task2TimeSpent,
-          sessionType: 'DIAGNOSTIC',
-        },
-      }),
-    ]);
+    // Create essay submission
+    const submission = await this.prisma.essaySubmission.create({
+      data: {
+        userId: user.id,
+        questionId: question.id,
+        essayText: dto.essay,
+        wordCount: dto.essay.split(/\s+/).length,
+        timeSpentSeconds: dto.timeSpent,
+        sessionType: 'DIAGNOSTIC',
+      },
+    });
 
     // Fetch user native language for personalized feedback
     const userExtended = await this.prisma.user.findUnique({
@@ -111,67 +81,39 @@ export class DiagnosticController {
       select: { nativeLanguage: true },
     });
 
-    // Assess both essays
-    const [task1Feedback, task2Feedback] = await Promise.all([
-      this.assessmentService.assessEssay(
-        task1Submission.essayText,
-        task1Question.prompt,
-        task1Question.taskType,
-        task1Question.subType || 'general',
-        task1Submission.wordCount,
-        task1Submission.timeSpentSeconds,
-        task1Question.examType,
-        userExtended?.nativeLanguage
-      ),
-      this.assessmentService.assessEssay(
-        task2Submission.essayText,
-        task2Question.prompt,
-        task2Question.taskType,
-        task2Question.subType || 'general',
-        task2Submission.wordCount,
-        task2Submission.timeSpentSeconds,
-        task2Question.examType,
-        userExtended?.nativeLanguage
-      ),
-    ]);
+    // Assess the essay
+    const feedback = await this.assessmentService.assessEssay(
+      submission.essayText,
+      question.prompt,
+      question.taskType,
+      question.subType || 'general',
+      submission.wordCount,
+      submission.timeSpentSeconds,
+      question.examType,
+      userExtended?.nativeLanguage,
+    );
 
     // Save feedback
-    await Promise.all([
-      this.assessmentService.saveFeedback(task1Submission.id, task1Feedback),
-      this.assessmentService.saveFeedback(task2Submission.id, task2Feedback),
-    ]);
+    await this.assessmentService.saveFeedback(submission.id, feedback);
 
-    // Update weakness profile with detected errors from both essays
-    const allErrors = [
-      ...task1Feedback.detectedErrors,
-      ...task2Feedback.detectedErrors,
-    ];
-
-    await this.weaknessService.updateFromEssayFeedback(user.id, allErrors);
+    // Update weakness profile with detected errors
+    await this.weaknessService.updateFromEssayFeedback(
+      user.id,
+      feedback.detectedErrors,
+    );
 
     // Update progress
-    await Promise.all([
-      this.progressService.updateProgressAfterEssay(user.id, task1Submission.id),
-      this.progressService.updateProgressAfterEssay(user.id, task2Submission.id),
-    ]);
+    await this.progressService.updateProgressAfterEssay(user.id, submission.id);
 
     // Get weakness profile
     const weaknesses = await this.weaknessService.getWeaknessProfile(user.id);
 
     return {
-      task1: {
-        submissionId: task1Submission.id,
-        scores: task1Feedback.scores,
-        feedback: task1Feedback.feedback,
-      },
-      task2: {
-        submissionId: task2Submission.id,
-        scores: task2Feedback.scores,
-        feedback: task2Feedback.feedback,
-      },
+      submissionId: submission.id,
+      scores: feedback.scores,
+      feedback: feedback.feedback,
       weaknesses,
-      overallScore:
-        (task1Feedback.scores.overall + task2Feedback.scores.overall) / 2,
+      overallScore: feedback.scores.overall,
     };
   }
 
@@ -180,8 +122,8 @@ export class DiagnosticController {
    */
   @Get('results')
   async getDiagnosticResults(@CurrentUser() user: any) {
-    // Get diagnostic essays
-    const diagnosticEssays = await this.prisma.essaySubmission.findMany({
+    // Get the latest diagnostic essay (Task 2 only)
+    const diagnosticEssay = await this.prisma.essaySubmission.findFirst({
       where: {
         userId: user.id,
         sessionType: 'DIAGNOSTIC',
@@ -191,14 +133,13 @@ export class DiagnosticController {
         feedback: true,
       },
       orderBy: { submittedAt: 'desc' },
-      take: 2, // Latest Task 1 and Task 2
     });
 
     // Get weakness profile
     const weaknesses = await this.weaknessService.getWeaknessProfile(user.id);
 
     return {
-      essays: diagnosticEssays,
+      essay: diagnosticEssay,
       weaknesses,
     };
   }

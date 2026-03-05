@@ -7,13 +7,18 @@ export interface EssayScores {
   overall: number;
 }
 
+export interface EssayCriterionFeedback {
+  justification: string;
+  strengths: string[];
+  weaknesses: string[];
+}
+
 export interface EssayFeedbackText {
-  taskResponse?: string;
-  taskAchievement?: string; // For Task 1
-  coherenceCohesion: string;
-  lexicalResource: string;
-  grammaticalRangeAccuracy: string;
-  overall: string;
+  taskResponse?: EssayCriterionFeedback;
+  taskAchievement?: EssayCriterionFeedback; // For Task 1
+  coherenceCohesion: EssayCriterionFeedback;
+  lexicalResource: EssayCriterionFeedback;
+  grammaticalRangeAccuracy: EssayCriterionFeedback;
 }
 
 export interface Annotation {
@@ -26,7 +31,8 @@ export interface Annotation {
 
 export interface ExaminerInsight {
   sentence: string;
-  issue: string;
+  quality: 'strength' | 'weakness' | 'neutral';
+  explanation: string;
   bandImpact: string;
 }
 
@@ -40,16 +46,19 @@ export interface DetectedError {
 export interface PriorityFix {
   issue: string;
   explanation: string;
-  drillType: string;
+  targetCriterion: string;
+  currentBand: number;
+  potentialBand: number;
 }
 
 export interface VocabularySuggestion {
   original: string;
   suggested: string;
-  context: string;
+  reason: string;
 }
 
 export interface EssayFeedbackResponse {
+  wordCount?: number;
   scores: EssayScores;
   feedback: EssayFeedbackText;
   annotations: Annotation[];
@@ -57,4 +66,5 @@ export interface EssayFeedbackResponse {
   detectedErrors: DetectedError[];
   priorityFixes: PriorityFix[];
   vocabularySuggestions?: VocabularySuggestion[];
+  examinerNotes?: string;
 }

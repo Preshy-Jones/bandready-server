@@ -52,9 +52,9 @@ export class UsersController {
       targetExamDate: user.targetExamDate,
       subscriptionTier: user.subscriptionTier,
       subscriptionExpiresAt: user.subscriptionExpiresAt,
-      dailySpeakingUsed: user.dailySpeakingUsed,
       speakingBalance: user.speakingBalance,
       writingBalance: user.writingBalance,
+      drillsExpireAt: user.drillsExpireAt,
       createdAt: user.createdAt,
     };
   }
