@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
+import { Polar } from '@polar-sh/sdk';
 
 type PlanKey = string;
 type PaymentProvider = 'paystack' | 'paddle' | 'polar';
@@ -128,6 +129,8 @@ export class PaymentsService {
 
   async getPublicConfig(countryCode?: string | null) {
     const region = getRegionConfig(countryCode);
+    console.log("region", region);
+    
     const globalProvider = await this.getGlobalProvider();
     const resolvedProvider = region.provider === 'paystack' ? 'paystack' : globalProvider;
 
@@ -135,6 +138,10 @@ export class PaymentsService {
       provider: resolvedProvider,
       models: region.models,
       packTier: region.packTier || null,
+      // Provider-agnostic pack pricing for the resolved region
+      packs: region.packTier && region.packTier !== 'nigeria'
+        ? this.packTiers[region.packTier] || {}
+        : {},
       paystack: {
         publicKey: this.configService.get<string>('PAYSTACK_PUBLIC_KEY') || null,
         plans: this.paystackPlanConfig,
@@ -847,66 +854,60 @@ export class PaymentsService {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const reference = `polar_${Date.now()}_${userId.slice(0, 8)}`;
 
-    // Create Polar checkout via API
-    const response = await fetch('https://api.polar.sh/v1/checkouts/custom', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${polarAccessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        product_id: polarProductId,
-        success_url: `${frontendUrl}/settings?payment=polar&status=success`,
-        customer_email: user.email,
+    const polar = new Polar({
+      accessToken: polarAccessToken,
+      server: this.configService.get<string>('POLAR_ENVIRONMENT') === 'production' ? 'production' : 'sandbox',
+    });
+
+    try {
+      // Create Polar checkout via SDK
+      const checkout = await polar.checkouts.create({
+        products: [polarProductId],
+        successUrl: `${frontendUrl}/settings?payment=polar&status=success`,
+        customerEmail: user.email,
         metadata: {
           userId: user.id,
           plan,
           packTier: region.packTier,
           reference,
         },
-      }),
-    });
+      });
 
-    const result = await response.json() as {
-      id?: string;
-      url?: string;
-      customer_id?: string;
-      error?: string;
-      detail?: string;
-    };
+      if (!checkout.id || !checkout.url) {
+        throw new Error('Missing ID or URL in Polar response');
+      }
 
-    if (!response.ok || !result.id) {
-      this.logger.error('Polar checkout creation failed', result);
-      throw new BadRequestException(result.detail || result.error || 'Failed to create Polar checkout');
-    }
+      // Create pending transaction record
+      await this.prisma.paymentTransaction.create({
+        data: {
+          userId,
+          provider: 'polar',
+          plan,
+          amountCents: packConfig.amountCents,
+          currency: 'USD',
+          reference,
+          polarCheckoutId: checkout.id,
+          status: PaymentStatus.PENDING,
+          metadata: {
+            userId,
+            plan,
+            packTier: region.packTier,
+            polarCheckoutId: checkout.id,
+          },
+        },
+      });
 
-    // Create pending transaction record
-    await this.prisma.paymentTransaction.create({
-      data: {
-        userId,
-        provider: 'polar',
-        plan,
+      return {
+        checkoutUrl: checkout.url,
+        reference,
         amountCents: packConfig.amountCents,
         currency: 'USD',
-        reference,
-        polarCheckoutId: result.id,
-        status: PaymentStatus.PENDING,
-        metadata: {
-          userId,
-          plan,
-          packTier: region.packTier,
-          polarCheckoutId: result.id,
-        },
-      },
-    });
-
-    return {
-      checkoutUrl: result.url || null,
-      reference,
-      amountCents: packConfig.amountCents,
-      currency: 'USD',
-      plan,
-    };
+        plan,
+      };
+    } catch (error: any) {
+      this.logger.error('Polar checkout creation failed', error);
+      throw new BadRequestException(error.message || 'Failed to create Polar checkout');
+    }
   }
 
   async handlePolarWebhook(rawBody: Buffer | undefined, headers: Record<string, string>) {
@@ -951,6 +952,7 @@ export class PaymentsService {
         id?: string;
         status?: string;
         customer_id?: string;
+        checkout_id?: string;
         metadata?: {
           userId?: string;
           plan?: string;
@@ -964,11 +966,11 @@ export class PaymentsService {
 
     this.logger.log(`Polar webhook received: ${event.type}`);
 
-    if (event.type !== 'checkout.completed' || !event.data?.id) {
+    if (event.type !== 'order.paid' || !event.data?.id) {
       return { received: true };
     }
 
-    const checkoutId = event.data.id;
+    const checkoutId = event.data.checkout_id || event.data.id; // fallback to order id if checkout_id missing
     const metadata = event.data.metadata;
     const userId = metadata?.userId;
 
