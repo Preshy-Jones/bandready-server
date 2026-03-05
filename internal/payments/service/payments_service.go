@@ -441,3 +441,5 @@ func (s *PaymentsService) GetBillingHistory(userID string, limit, offset int) ([
 }
 
 // paddleCheckoutAdded marks Paddle checkout support
+
+// polarCheckoutSupport
