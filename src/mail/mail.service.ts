@@ -188,4 +188,42 @@ export class MailService {
       return false;
     }
   }
+
+  async sendWaitlistConfirmation(email: string, firstName?: string | null): Promise<boolean> {
+    const nameStr = firstName ? firstName : 'there';
+
+    this.logger.log(`Attempting to send Waitlist confirmation to ${email}`);
+
+    if (!this.configService.get<string>('RESEND_API_KEY')) {
+      this.logger.warn(`[DEV MODE] Would send Waitlist Confirmation to ${email}`);
+      return true;
+    }
+
+    try {
+      const data = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: 'You are on the Waitlist!',
+        html: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2E3192;">You're in line!</h2>
+            <p>Hi ${nameStr},</p>
+            <p>Thanks for joining the waitlist for BandReady. We're currently hard at work building the most advanced AI-powered IELTS platform to help you achieve your target band score with ease.</p>
+
+            <p>We'll notify you as soon as early access opens.</p>
+
+            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
+          </div>
+        `,
+      });
+
+      this.logger.log(`Successfully sent Waitlist confirmation email to ${email}. ID: ${data.data?.id}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send Waitlist confirmation email to ${email}`, error);
+      return false;
+    }
+  }
 }
+

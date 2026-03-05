@@ -11,6 +11,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { TasksModule } from './tasks/tasks.module';
     MailModule,
     ScheduleModule.forRoot(),
     TasksModule,
+    WaitlistModule,
   ],
 })
 export class AppModule {}
