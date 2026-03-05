@@ -28,13 +28,13 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Get('config')
-  getPublicConfig(@Query('country') country?: string) {
+  async getPublicConfig(@Query('country') country?: string) {
     return this.paymentsService.getPublicConfig(country || null);
   }
 
   @Get('provider')
-  getProvider(@Query('country') country?: string) {
-    return { provider: this.paymentsService.getProviderForCountry(country || null) };
+  async getProvider(@Query('country') country?: string) {
+    return { provider: await this.paymentsService.getProviderForCountry(country || null) };
   }
 
   @Get('billing/history')
@@ -102,5 +102,28 @@ export class PaymentsController {
     @Headers('paddle-signature') signature?: string,
   ) {
     return this.paymentsService.handlePaddleWebhook(req.rawBody, signature);
+  }
+
+  // ==========================================
+  // POLAR ENDPOINTS
+  // ==========================================
+
+  @Post('polar/checkout')
+  @UseGuards(AuthGuard('jwt'))
+  async initializePolarCheckout(
+    @CurrentUser() user: User,
+    @Body() dto: InitializePaymentDto,
+    @Query('country') country?: string,
+  ) {
+    return this.paymentsService.initializePolarCheckout(user.id, dto?.plan || 'starter', country);
+  }
+
+  @Post('polar/webhook')
+  @HttpCode(200)
+  async polarWebhook(
+    @Req() req: Request & { rawBody?: Buffer },
+    @Headers() headers: Record<string, string>,
+  ) {
+    return this.paymentsService.handlePolarWebhook(req.rawBody, headers);
   }
 }

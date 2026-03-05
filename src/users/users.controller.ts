@@ -54,6 +54,7 @@ export class UsersController {
       subscriptionExpiresAt: user.subscriptionExpiresAt,
       speakingBalance: user.speakingBalance,
       writingBalance: user.writingBalance,
+      drillsExpireAt: user.drillsExpireAt,
       createdAt: user.createdAt,
     };
   }

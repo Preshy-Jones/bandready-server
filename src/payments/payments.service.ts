@@ -9,13 +9,34 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, Prisma } from '@prisma/client';
 
 type PlanKey = string;
-type PaymentProvider = 'paystack' | 'paddle';
+type PaymentProvider = 'paystack' | 'paddle' | 'polar';
+type GlobalProvider = 'paddle' | 'polar';
+type PaymentModel = 'packs' | 'subscriptions';
 
-// Countries where Paystack is available and preferred (Nigeria only — pack-based model)
-const PAYSTACK_COUNTRIES = new Set(['NG']);
+interface RegionEntry {
+  provider: 'paystack' | 'global';
+  models: PaymentModel[];
+  packTier?: string;
+}
+
+const REGION_CONFIG: Record<string, RegionEntry> = {
+  NG: { provider: 'paystack', models: ['packs'], packTier: 'nigeria' },
+  IN: { provider: 'global',   models: ['packs'], packTier: 'india' },
+  PK: { provider: 'global',   models: ['packs'], packTier: 'india' },
+  BD: { provider: 'global',   models: ['packs'], packTier: 'india' },
+  NP: { provider: 'global',   models: ['packs'], packTier: 'india' },
+  LK: { provider: 'global',   models: ['packs'], packTier: 'india' },
+  PH: { provider: 'global',   models: ['packs'], packTier: 'india' },
+  _default: { provider: 'global', models: ['subscriptions'] },
+};
+
+function getRegionConfig(countryCode?: string | null): RegionEntry {
+  if (!countryCode) return REGION_CONFIG._default;
+  return REGION_CONFIG[countryCode.toUpperCase()] ?? REGION_CONFIG._default;
+}
 
 type PaystackInitializeResponse = {
   status: boolean;
@@ -48,19 +69,36 @@ type PaystackVerifyResponse = {
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; sessionCount?: number; writingCount?: number }>;
+  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; sessionCount?: number; writingCount?: number; drillValidityDays?: number }>;
   private readonly paddlePlanConfig: Record<PlanKey, { amountCents: number; durationDays: number; priceId: string }>;
+  private readonly packTiers: Record<string, Record<string, {
+    amountCents: number; sessionCount?: number; writingCount?: number; drillValidityDays?: number;
+  }>> = {
+    india: {
+      starter:  { amountCents: 299,  sessionCount: 3,  writingCount: 5 },
+      standard: { amountCents: 999,  sessionCount: 12, writingCount: 20, drillValidityDays: 45 },
+      pro:      { amountCents: 1999, sessionCount: 30, writingCount: 50, drillValidityDays: 60 },
+      ultimate: { amountCents: 2999, sessionCount: 60, writingCount: 100, drillValidityDays: 90 },
+    },
+    row: {
+      starter:  { amountCents: 499,  sessionCount: 3,  writingCount: 5 },
+      standard: { amountCents: 1499, sessionCount: 12, writingCount: 20, drillValidityDays: 45 },
+      pro:      { amountCents: 2999, sessionCount: 30, writingCount: 50, drillValidityDays: 60 },
+      ultimate: { amountCents: 4999, sessionCount: 60, writingCount: 100, drillValidityDays: 90 },
+    },
+  };
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
     // Paystack plans (NGN Kobo) — Session packs only, Nigeria only
+    // Sessions never expire. drillValidityDays = how long unlimited drills last from purchase.
     this.paystackPlanConfig = {
-      starter: { amountKobo: 75000, durationDays: 0, sessionCount: 5, writingCount: 8 },
-      standard: { amountKobo: 200000, durationDays: 0, sessionCount: 15, writingCount: 25 },
-      pro: { amountKobo: 450000, durationDays: 0, sessionCount: 40, writingCount: 65 },
-      ultimate: { amountKobo: 1000000, durationDays: 0, sessionCount: 100, writingCount: 160 },
+      starter: { amountKobo: 50000, durationDays: 0, sessionCount: 3, writingCount: 5 },
+      standard: { amountKobo: 200000, durationDays: 0, sessionCount: 12, writingCount: 20, drillValidityDays: 45 },
+      pro: { amountKobo: 550000, durationDays: 0, sessionCount: 30, writingCount: 50, drillValidityDays: 60 },
+      ultimate: { amountKobo: 800000, durationDays: 0, sessionCount: 60, writingCount: 100, drillValidityDays: 90 },
     };
 
     // Paddle plans (USD Cents)
@@ -68,24 +106,35 @@ export class PaymentsService {
       // Rest of World (ROW)
       monthly: { amountCents: 999, durationDays: 30, priceId: this.configService.get('PADDLE_MONTHLY_PRICE_ID') || '' },
       yearly: { amountCents: 9999, durationDays: 365, priceId: this.configService.get('PADDLE_YEARLY_PRICE_ID') || '' },
-      
+
       // South Asia
       monthly_sa: { amountCents: 499, durationDays: 30, priceId: this.configService.get('PADDLE_SA_MONTHLY_PRICE_ID') || '' },
       yearly_sa: { amountCents: 4999, durationDays: 365, priceId: this.configService.get('PADDLE_SA_YEARLY_PRICE_ID') || '' },
     };
   }
 
-  getProviderForCountry(countryCode?: string | null): PaymentProvider {
-    if (countryCode && PAYSTACK_COUNTRIES.has(countryCode.toUpperCase())) {
-      return 'paystack';
-    }
-    return 'paddle';
+  private async getGlobalProvider(): Promise<GlobalProvider> {
+    const setting = await this.prisma.appSetting.findUnique({
+      where: { key: 'global_payment_provider' },
+    });
+    return (setting?.value as GlobalProvider) || 'paddle';
   }
 
-  getPublicConfig(countryCode?: string | null) {
-    const provider = this.getProviderForCountry(countryCode);
+  async getProviderForCountry(countryCode?: string | null): Promise<PaymentProvider> {
+    const region = getRegionConfig(countryCode);
+    if (region.provider === 'paystack') return 'paystack';
+    return this.getGlobalProvider();
+  }
+
+  async getPublicConfig(countryCode?: string | null) {
+    const region = getRegionConfig(countryCode);
+    const globalProvider = await this.getGlobalProvider();
+    const resolvedProvider = region.provider === 'paystack' ? 'paystack' : globalProvider;
+
     return {
-      provider,
+      provider: resolvedProvider,
+      models: region.models,
+      packTier: region.packTier || null,
       paystack: {
         publicKey: this.configService.get<string>('PAYSTACK_PUBLIC_KEY') || null,
         plans: this.paystackPlanConfig,
@@ -100,6 +149,12 @@ export class PaymentsService {
             { amountCents: val.amountCents, durationDays: val.durationDays, priceId: val.priceId },
           ]),
         ),
+        currency: 'USD',
+      },
+      polar: {
+        packs: region.packTier && region.packTier !== 'nigeria'
+          ? this.packTiers[region.packTier] || {}
+          : {},
         currency: 'USD',
       },
     };
@@ -120,7 +175,8 @@ export class PaymentsService {
       throw new BadRequestException('User not found');
     }
 
-    if (!user.country || !PAYSTACK_COUNTRIES.has(user.country.toUpperCase())) {
+    const region = getRegionConfig(user.country);
+    if (region.provider !== 'paystack') {
       throw new ForbiddenException('Paystack payments are only available in Nigeria');
     }
 
@@ -324,6 +380,34 @@ export class PaymentsService {
     return result.data;
   }
 
+  private async applyPackPurchase(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    packConfig: { sessionCount?: number; writingCount?: number; drillValidityDays?: number },
+  ) {
+    let drillsExpireAt: Date | undefined;
+    if (packConfig.drillValidityDays) {
+      const currentUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { drillsExpireAt: true },
+      });
+      const drillStart = currentUser?.drillsExpireAt && currentUser.drillsExpireAt > new Date()
+        ? currentUser.drillsExpireAt
+        : new Date();
+      drillsExpireAt = new Date(drillStart);
+      drillsExpireAt.setDate(drillsExpireAt.getDate() + packConfig.drillValidityDays);
+    }
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        speakingBalance: packConfig.sessionCount ? { increment: packConfig.sessionCount } : undefined,
+        writingBalance: packConfig.writingCount ? { increment: packConfig.writingCount } : undefined,
+        drillsExpireAt: drillsExpireAt || undefined,
+      },
+    });
+  }
+
   private async applySuccessfulPayment(
     verification: PaystackVerifyResponse['data'],
     requestedUserId: string,
@@ -383,14 +467,14 @@ export class PaymentsService {
       const writingCount = configuredPlan.writingCount;
 
       if (sessionCount || writingCount) {
-        await tx.user.update({
-          where: { id: requestedUserId },
-          data: {
-            speakingBalance: sessionCount ? { increment: sessionCount } : undefined,
-            writingBalance: writingCount ? { increment: writingCount } : undefined,
-            paystackCustomerCode: verification.customer?.customer_code || undefined,
-          },
-        });
+        await this.applyPackPurchase(tx, requestedUserId, configuredPlan);
+        // Update paystackCustomerCode separately
+        if (verification.customer?.customer_code) {
+          await tx.user.update({
+            where: { id: requestedUserId },
+            data: { paystackCustomerCode: verification.customer.customer_code },
+          });
+        }
       } else {
         await tx.user.update({
           where: { id: requestedUserId },
@@ -459,7 +543,8 @@ export class PaymentsService {
       throw new BadRequestException('User not found');
     }
 
-    if (user.country && PAYSTACK_COUNTRIES.has(user.country.toUpperCase())) {
+    const region = getRegionConfig(user.country);
+    if (region.provider === 'paystack') {
       throw new ForbiddenException('Nigerian users must purchase session packs, not subscriptions');
     }
 
@@ -704,6 +789,268 @@ export class PaymentsService {
             userId,
             plan,
             paddleEventType: event.event_type,
+          },
+        },
+      });
+    });
+
+    return { received: true };
+  }
+
+  // ==========================================
+  // POLAR METHODS
+  // ==========================================
+
+  async initializePolarCheckout(userId: string, plan: PlanKey = 'starter', countryCode?: string) {
+    const polarAccessToken = this.configService.get<string>('POLAR_ACCESS_TOKEN');
+    if (!polarAccessToken) {
+      throw new InternalServerErrorException('Polar is not configured');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, fullName: true, polarCustomerId: true, country: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const resolvedCountry = countryCode || user.country;
+    const region = getRegionConfig(resolvedCountry);
+
+    if (region.provider === 'paystack') {
+      throw new ForbiddenException('Nigerian users must use Paystack for session packs');
+    }
+
+    if (!region.packTier || region.packTier === 'nigeria') {
+      throw new BadRequestException('Pack purchases are not available for this region via Polar');
+    }
+
+    const tierPacks = this.packTiers[region.packTier];
+    if (!tierPacks) {
+      throw new BadRequestException(`Pack tier "${region.packTier}" is not configured`);
+    }
+
+    const packConfig = tierPacks[plan];
+    if (!packConfig) {
+      throw new BadRequestException(`Invalid plan "${plan}" for tier "${region.packTier}"`);
+    }
+
+    // Look up the Polar product ID from env
+    const envKey = `POLAR_PRODUCT_${region.packTier.toUpperCase()}_${plan.toUpperCase()}`;
+    const polarProductId = this.configService.get<string>(envKey);
+    if (!polarProductId) {
+      throw new InternalServerErrorException(`Polar product not configured for ${envKey}`);
+    }
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const reference = `polar_${Date.now()}_${userId.slice(0, 8)}`;
+
+    // Create Polar checkout via API
+    const response = await fetch('https://api.polar.sh/v1/checkouts/custom', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${polarAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        product_id: polarProductId,
+        success_url: `${frontendUrl}/settings?payment=polar&status=success`,
+        customer_email: user.email,
+        metadata: {
+          userId: user.id,
+          plan,
+          packTier: region.packTier,
+          reference,
+        },
+      }),
+    });
+
+    const result = await response.json() as {
+      id?: string;
+      url?: string;
+      customer_id?: string;
+      error?: string;
+      detail?: string;
+    };
+
+    if (!response.ok || !result.id) {
+      this.logger.error('Polar checkout creation failed', result);
+      throw new BadRequestException(result.detail || result.error || 'Failed to create Polar checkout');
+    }
+
+    // Create pending transaction record
+    await this.prisma.paymentTransaction.create({
+      data: {
+        userId,
+        provider: 'polar',
+        plan,
+        amountCents: packConfig.amountCents,
+        currency: 'USD',
+        reference,
+        polarCheckoutId: result.id,
+        status: PaymentStatus.PENDING,
+        metadata: {
+          userId,
+          plan,
+          packTier: region.packTier,
+          polarCheckoutId: result.id,
+        },
+      },
+    });
+
+    return {
+      checkoutUrl: result.url || null,
+      reference,
+      amountCents: packConfig.amountCents,
+      currency: 'USD',
+      plan,
+    };
+  }
+
+  async handlePolarWebhook(rawBody: Buffer | undefined, headers: Record<string, string>) {
+    const webhookSecret = this.configService.get<string>('POLAR_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+      throw new InternalServerErrorException('Polar webhook secret is not configured');
+    }
+
+    if (!rawBody) {
+      throw new UnauthorizedException('Missing webhook body');
+    }
+
+    // Verify webhook signature
+    const signature = headers['webhook-signature'] || headers['polar-signature'];
+    if (!signature) {
+      throw new UnauthorizedException('Missing webhook signature');
+    }
+
+    // Polar uses standard webhook signature: ts=<timestamp>,v1=<hash>
+    const sigParts = signature.split(',');
+    const tsPart = sigParts.find(p => p.trim().startsWith('ts='));
+    const v1Part = sigParts.find(p => p.trim().startsWith('v1='));
+
+    if (!tsPart || !v1Part) {
+      throw new UnauthorizedException('Invalid webhook signature format');
+    }
+
+    const ts = tsPart.trim().replace('ts=', '');
+    const v1 = v1Part.trim().replace('v1=', '');
+    const signedPayload = `${ts}.${rawBody.toString('utf-8')}`;
+    const expectedHash = createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
+
+    const expectedBuffer = Buffer.from(expectedHash);
+    const v1Buffer = Buffer.from(v1);
+    if (expectedBuffer.length !== v1Buffer.length || !timingSafeEqual(expectedBuffer, v1Buffer)) {
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+
+    const event = JSON.parse(rawBody.toString('utf-8')) as {
+      type?: string;
+      data?: {
+        id?: string;
+        status?: string;
+        customer_id?: string;
+        metadata?: {
+          userId?: string;
+          plan?: string;
+          packTier?: string;
+          reference?: string;
+        };
+        amount?: number;
+        currency?: string;
+      };
+    };
+
+    this.logger.log(`Polar webhook received: ${event.type}`);
+
+    if (event.type !== 'checkout.completed' || !event.data?.id) {
+      return { received: true };
+    }
+
+    const checkoutId = event.data.id;
+    const metadata = event.data.metadata;
+    const userId = metadata?.userId;
+
+    if (!userId) {
+      this.logger.warn('Polar webhook missing userId in metadata');
+      return { received: true };
+    }
+
+    const plan = metadata?.plan || 'starter';
+    const packTier = metadata?.packTier || 'india';
+    const tierPacks = this.packTiers[packTier];
+    const packConfig = tierPacks?.[plan];
+
+    if (!packConfig) {
+      this.logger.warn(`Polar webhook: unknown pack tier/plan: ${packTier}/${plan}`);
+      return { received: true };
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Check idempotency
+      const existingTransaction = await tx.paymentTransaction.findUnique({
+        where: { polarCheckoutId: checkoutId },
+      });
+
+      if (existingTransaction?.status === PaymentStatus.SUCCESS) {
+        return;
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+
+      if (!user) {
+        this.logger.warn(`Polar webhook: user ${userId} not found`);
+        return;
+      }
+
+      // Apply pack credits
+      await this.applyPackPurchase(tx, userId, packConfig);
+
+      // Update polar customer ID if provided
+      if (event.data?.customer_id) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { polarCustomerId: event.data.customer_id },
+        });
+      }
+
+      const reference = metadata?.reference || `polar_${checkoutId}`;
+
+      // Upsert payment transaction
+      await tx.paymentTransaction.upsert({
+        where: { polarCheckoutId: checkoutId },
+        update: {
+          status: PaymentStatus.SUCCESS,
+          paidAt: new Date(),
+          amountCents: event.data?.amount || packConfig.amountCents,
+          currency: event.data?.currency || 'USD',
+          metadata: {
+            ...(typeof existingTransaction?.metadata === 'object' && existingTransaction?.metadata
+              ? (existingTransaction.metadata as Record<string, unknown>)
+              : {}),
+            verifiedAt: new Date().toISOString(),
+            polarEventType: event.type,
+          },
+        },
+        create: {
+          userId,
+          provider: 'polar',
+          plan,
+          amountCents: event.data?.amount || packConfig.amountCents,
+          currency: event.data?.currency || 'USD',
+          reference,
+          polarCheckoutId: checkoutId,
+          status: PaymentStatus.SUCCESS,
+          paidAt: new Date(),
+          metadata: {
+            userId,
+            plan,
+            packTier,
+            polarEventType: event.type,
           },
         },
       });
