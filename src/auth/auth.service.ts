@@ -18,16 +18,7 @@ export interface JwtPayload {
   role?: string;
 }
 
-export interface RegisterDto {
-  email: string;
-  password: string;
-  fullName: string;
-}
-
-export interface LoginDto {
-  email: string;
-  password: string;
-}
+import { RegisterDto, LoginDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -141,26 +132,20 @@ export class AuthService {
   }
 
   async validateGoogleUser(googleUser: GoogleUser) {
-    console.log('[Auth] Validating Google user:', googleUser.email, googleUser.googleId);
-
     // Find or create user
     let user = await this.usersService.findByGoogleId(googleUser.googleId);
-    console.log('[Auth] Found by googleId:', user?.id || 'NOT FOUND');
     let isNew = false;
 
     if (!user) {
       // Check if user exists with email
       user = await this.usersService.findByEmail(googleUser.email);
-      console.log('[Auth] Found by email:', user?.id || 'NOT FOUND');
 
       if (user) {
         // Link Google account to existing user
         user = await this.usersService.linkGoogleAccount(user.id, googleUser.googleId, googleUser.avatarUrl);
-        console.log('[Auth] Linked Google account to user:', user.id);
       } else {
         // Create new user
         user = await this.usersService.createFromGoogle(googleUser);
-        console.log('[Auth] Created new user:', user.id);
         isNew = true;
       }
     }
@@ -249,9 +234,7 @@ export class AuthService {
   }
 
   async validateJwtPayload(payload: JwtPayload) {
-    console.log('[Auth] Validating JWT for user ID:', payload.sub);
     const user = await this.usersService.findById(payload.sub);
-    console.log('[Auth] User lookup result:', user?.id || 'NOT FOUND');
     return user;
   }
 }

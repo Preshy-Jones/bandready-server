@@ -1,5 +1,7 @@
-import { NestFactory } from '@nestjs/core';
+import './instrument';
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SentryFilter } from './common/filters/sentry.filter';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -28,6 +30,10 @@ async function bootstrap() {
     whitelist: true,
     transform: true,
   }));
+  
+  // Sentry global error tracking
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new SentryFilter(httpAdapter));
   
   // Global prefix for API routes
   app.setGlobalPrefix('api');
