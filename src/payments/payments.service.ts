@@ -114,9 +114,16 @@ export class PaymentsService {
     };
   }
 
-  private async getGlobalProvider(): Promise<GlobalProvider> {
+  private async getActivePackProvider(): Promise<GlobalProvider> {
     const setting = await this.prisma.appSetting.findUnique({
-      where: { key: 'global_payment_provider' },
+      where: { key: 'active_pack_provider' },
+    });
+    return (setting?.value as GlobalProvider) || 'polar';
+  }
+
+  private async getActiveSubscriptionProvider(): Promise<GlobalProvider> {
+    const setting = await this.prisma.appSetting.findUnique({
+      where: { key: 'active_subscription_provider' },
     });
     return (setting?.value as GlobalProvider) || 'paddle';
   }
@@ -124,24 +131,26 @@ export class PaymentsService {
   async getProviderForCountry(countryCode?: string | null): Promise<PaymentProvider> {
     const region = getRegionConfig(countryCode);
     if (region.provider === 'paystack') return 'paystack';
-    return this.getGlobalProvider();
+    return this.getActiveSubscriptionProvider();
   }
 
   async getPublicConfig(countryCode?: string | null) {
     const region = getRegionConfig(countryCode);
     console.log("region", region);
-    
-    const globalProvider = await this.getGlobalProvider();
-    const resolvedProvider = region.provider === 'paystack' ? 'paystack' : globalProvider;
+
+    const activePackProvider = region.provider === 'paystack' ? 'paystack' : await this.getActivePackProvider();
+    const activeSubscriptionProvider = region.provider === 'paystack' ? 'paystack' : await this.getActiveSubscriptionProvider();
+
+    const packTier = region.packTier || null;
+    const packs = packTier && packTier !== 'nigeria' ? this.packTiers[packTier] || {} : {};
 
     return {
-      provider: resolvedProvider,
+      provider: activeSubscriptionProvider,
+      activePackProvider,
+      activeSubscriptionProvider,
       models: region.models,
-      packTier: region.packTier || null,
-      // Provider-agnostic pack pricing for the resolved region
-      packs: region.packTier && region.packTier !== 'nigeria'
-        ? this.packTiers[region.packTier] || {}
-        : {},
+      packTier,
+      packs,
       paystack: {
         publicKey: this.configService.get<string>('PAYSTACK_PUBLIC_KEY') || null,
         plans: this.paystackPlanConfig,
@@ -159,9 +168,13 @@ export class PaymentsService {
         currency: 'USD',
       },
       polar: {
-        packs: region.packTier && region.packTier !== 'nigeria'
-          ? this.packTiers[region.packTier] || {}
-          : {},
+        packs,
+        plans: Object.fromEntries(
+          Object.entries(this.paddlePlanConfig).map(([key, val]) => [
+            key,
+            { amountCents: val.amountCents, durationDays: val.durationDays },
+          ]),
+        ),
         currency: 'USD',
       },
     };
@@ -531,11 +544,49 @@ export class PaymentsService {
     });
   }
 
+  async applySubscriptionPurchase(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    durationDays: number,
+    paymentDate: Date,
+    providerCustomerId?: string,
+    provider: 'paddle' | 'polar' = 'paddle'
+  ) {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, subscriptionExpiresAt: true },
+    });
+
+    if (!user) return null;
+
+    const subscriptionStart = user.subscriptionExpiresAt && user.subscriptionExpiresAt > paymentDate
+      ? user.subscriptionExpiresAt
+      : paymentDate;
+    const subscriptionEnd = new Date(subscriptionStart);
+    subscriptionEnd.setDate(subscriptionEnd.getDate() + durationDays);
+
+    const updateData: any = {
+      subscriptionTier: 'premium',
+      subscriptionExpiresAt: subscriptionEnd,
+    };
+    if (providerCustomerId) {
+      if (provider === 'paddle') updateData.paddleCustomerId = providerCustomerId;
+      if (provider === 'polar') updateData.polarCustomerId = providerCustomerId;
+    }
+
+    await tx.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return { subscriptionStart, subscriptionEnd };
+  }
+
   // ==========================================
   // PADDLE METHODS
   // ==========================================
 
-  async initializePaddleCheckout(userId: string, plan: PlanKey = 'monthly') {
+  async initializePaddleCheckout(userId: string, plan: PlanKey = 'monthly', model: PaymentModel = 'subscriptions') {
     const paddleApiKey = this.configService.get<string>('PADDLE_API_KEY');
     if (!paddleApiKey) {
       throw new InternalServerErrorException('Paddle is not configured');
@@ -552,12 +603,37 @@ export class PaymentsService {
 
     const region = getRegionConfig(user.country);
     if (region.provider === 'paystack') {
-      throw new ForbiddenException('Nigerian users must purchase session packs, not subscriptions');
+      throw new ForbiddenException('Nigerian users must purchase session packs via Paystack');
     }
 
-    const selectedPlan = this.paddlePlanConfig[plan];
-    if (!selectedPlan || !selectedPlan.priceId) {
-      throw new BadRequestException('Invalid plan selected or Paddle price not configured');
+    let priceId: string;
+    let amountCents: number;
+    let customData: any = { userId, plan, model };
+
+    if (model === 'packs') {
+      if (!region.packTier || region.packTier === 'nigeria') {
+        throw new BadRequestException('Pack purchases are not available for this region via Paddle');
+      }
+      const tierPacks = this.packTiers[region.packTier];
+      const packConfig = tierPacks?.[plan];
+      if (!packConfig) {
+        throw new BadRequestException(`Invalid pack plan "${plan}" for tier "${region.packTier}"`);
+      }
+      const envKey = `PADDLE_PACK_${region.packTier.toUpperCase()}_${plan.toUpperCase()}`;
+      priceId = this.configService.get<string>(envKey) || '';
+      if (!priceId) {
+        throw new InternalServerErrorException(`Paddle price not configured for ${envKey}`);
+      }
+      amountCents = packConfig.amountCents;
+      customData.packTier = region.packTier;
+    } else {
+      const selectedPlan = this.paddlePlanConfig[plan];
+      if (!selectedPlan || !selectedPlan.priceId) {
+        throw new BadRequestException('Invalid subscription plan selected or Paddle price not configured');
+      }
+      priceId = selectedPlan.priceId;
+      amountCents = selectedPlan.amountCents;
+      customData.subscriptionDurationDays = selectedPlan.durationDays;
     }
 
     const paddleEnv = this.configService.get<string>('PADDLE_ENVIRONMENT') || 'sandbox';
@@ -569,15 +645,11 @@ export class PaymentsService {
     const transactionPayload: Record<string, unknown> = {
       items: [
         {
-          price_id: selectedPlan.priceId,
+          price_id: priceId,
           quantity: 1,
         },
       ],
-      custom_data: {
-        userId: user.id,
-        plan,
-        subscriptionDurationDays: selectedPlan.durationDays,
-      },
+      custom_data: customData,
     };
 
     // If user already has a Paddle customer ID, use it
@@ -629,7 +701,7 @@ export class PaymentsService {
         userId,
         provider: 'paddle',
         plan,
-        amountCents: selectedPlan.amountCents,
+        amountCents,
         currency: 'USD',
         reference,
         paddleTransactionId: result.data.id,
@@ -637,8 +709,8 @@ export class PaymentsService {
         metadata: {
           userId,
           plan,
-          subscriptionDurationDays: selectedPlan.durationDays,
           paddleTransactionId: result.data.id,
+          ...customData,
         },
       },
     });
@@ -647,7 +719,7 @@ export class PaymentsService {
       transactionId: result.data.id,
       checkoutUrl: result.data.checkout?.url || null,
       reference,
-      amountCents: selectedPlan.amountCents,
+      amountCents,
       currency: 'USD',
       plan,
     };
@@ -708,7 +780,7 @@ export class PaymentsService {
     }
 
     const transactionId = event.data.id;
-    const customData = event.data.custom_data;
+    const customData = event.data.custom_data as any;
     const userId = customData?.userId;
 
     if (!userId) {
@@ -717,7 +789,7 @@ export class PaymentsService {
     }
 
     const plan = customData?.plan || 'monthly';
-    const configuredPlan = this.paddlePlanConfig[plan] || this.paddlePlanConfig.monthly;
+    const model = customData?.model || 'subscriptions';
     const paymentDate = event.data.billed_at ? new Date(event.data.billed_at) : new Date();
 
     await this.prisma.$transaction(async (tx) => {
@@ -740,25 +812,44 @@ export class PaymentsService {
         return;
       }
 
-      const subscriptionStart = user.subscriptionExpiresAt && user.subscriptionExpiresAt > paymentDate
-        ? user.subscriptionExpiresAt
-        : paymentDate;
-      const subscriptionEnd = new Date(subscriptionStart);
-      subscriptionEnd.setDate(subscriptionEnd.getDate() + configuredPlan.durationDays);
+      let subscriptionStartsAt: Date | undefined;
+      let subscriptionEndsAt: Date | undefined;
+      let baseAmountCents = 0;
 
-      // Update user subscription
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          subscriptionTier: 'premium',
-          subscriptionExpiresAt: subscriptionEnd,
-          paddleCustomerId: event.data?.customer_id || undefined,
-        },
-      });
+      if (model === 'packs') {
+        const packTier = customData.packTier || 'india';
+        const packConfig = this.packTiers[packTier]?.[plan];
+        if (packConfig) {
+          await this.applyPackPurchase(tx, userId, packConfig);
+          baseAmountCents = packConfig.amountCents;
+          
+          if (event.data?.customer_id) {
+            await tx.user.update({
+              where: { id: userId },
+              data: { paddleCustomerId: event.data.customer_id },
+            });
+          }
+        }
+      } else {
+        const configuredPlan = this.paddlePlanConfig[plan] || this.paddlePlanConfig.monthly;
+        baseAmountCents = configuredPlan.amountCents;
+        const subResult = await this.applySubscriptionPurchase(
+          tx, 
+          userId, 
+          configuredPlan.durationDays, 
+          paymentDate, 
+          event.data?.customer_id, 
+          'paddle'
+        );
+        if (subResult) {
+            subscriptionStartsAt = subResult.subscriptionStart;
+            subscriptionEndsAt = subResult.subscriptionEnd;
+        }
+      }
 
       const amountCents = event.data?.details?.totals?.total
         ? Math.round(Number(event.data.details.totals.total))
-        : configuredPlan.amountCents;
+        : baseAmountCents;
 
       const reference = `paddle_${transactionId}`;
 
@@ -770,14 +861,15 @@ export class PaymentsService {
           paidAt: paymentDate,
           amountCents,
           currency: event.data?.details?.totals?.currency_code || 'USD',
-          subscriptionStartsAt: subscriptionStart,
-          subscriptionEndsAt: subscriptionEnd,
+          subscriptionStartsAt,
+          subscriptionEndsAt,
           metadata: {
             ...(typeof existingTransaction?.metadata === 'object' && existingTransaction?.metadata
               ? (existingTransaction.metadata as Record<string, unknown>)
               : {}),
             verifiedAt: new Date().toISOString(),
             paddleEventType: event.event_type,
+            model,
           },
         },
         create: {
@@ -790,11 +882,12 @@ export class PaymentsService {
           paddleTransactionId: transactionId,
           status: PaymentStatus.SUCCESS,
           paidAt: paymentDate,
-          subscriptionStartsAt: subscriptionStart,
-          subscriptionEndsAt: subscriptionEnd,
+          subscriptionStartsAt,
+          subscriptionEndsAt,
           metadata: {
             userId,
             plan,
+            model,
             paddleEventType: event.event_type,
           },
         },
@@ -808,7 +901,7 @@ export class PaymentsService {
   // POLAR METHODS
   // ==========================================
 
-  async initializePolarCheckout(userId: string, plan: PlanKey = 'starter', countryCode?: string) {
+  async initializePolarCheckout(userId: string, plan: PlanKey = 'starter', model: PaymentModel = 'packs', countryCode?: string) {
     const polarAccessToken = this.configService.get<string>('POLAR_ACCESS_TOKEN');
     if (!polarAccessToken) {
       throw new InternalServerErrorException('Polar is not configured');
@@ -826,29 +919,53 @@ export class PaymentsService {
     const resolvedCountry = countryCode || user.country;
     const region = getRegionConfig(resolvedCountry);
 
-    if (region.provider === 'paystack') {
+    if (region.provider === 'paystack' && model === 'packs') {
       throw new ForbiddenException('Nigerian users must use Paystack for session packs');
     }
 
-    if (!region.packTier || region.packTier === 'nigeria') {
-      throw new BadRequestException('Pack purchases are not available for this region via Polar');
+    let polarProductId: string;
+    let amountCents: number;
+    let customData: any = { userId, plan, model };
+
+    if (model === 'packs') {
+      if (!region.packTier || region.packTier === 'nigeria') {
+        throw new BadRequestException('Pack purchases are not available for this region via Polar');
+      }
+
+      const tierPacks = this.packTiers[region.packTier];
+      if (!tierPacks) {
+        throw new BadRequestException(`Pack tier "${region.packTier}" is not configured`);
+      }
+
+      const packConfig = tierPacks[plan];
+      if (!packConfig) {
+        throw new BadRequestException(`Invalid pack plan "${plan}" for tier "${region.packTier}"`);
+      }
+
+      // Look up the Polar product ID from env
+      const envKey = `POLAR_PRODUCT_${region.packTier.toUpperCase()}_${plan.toUpperCase()}`;
+      polarProductId = this.configService.get<string>(envKey) || '';
+      amountCents = packConfig.amountCents;
+      customData.packTier = region.packTier;
+      
+    } else {
+      // Subscriptions
+      const subConfig = this.paddlePlanConfig[plan]; // Reuse paddle durations and fallback prices mapping
+      if (!subConfig) {
+        throw new BadRequestException(`Invalid subscription plan "${plan}"`);
+      }
+      
+      let regionPrefix = plan.includes('sa') ? 'SA' : 'ROW';
+      let planSuffix = plan.includes('monthly') ? 'MONTHLY' : 'YEARLY';
+      
+      const envKey = `POLAR_SUB_${regionPrefix}_${planSuffix}`;
+      polarProductId = this.configService.get<string>(envKey) || '';
+      amountCents = subConfig.amountCents;
+      customData.subscriptionDurationDays = subConfig.durationDays;
     }
 
-    const tierPacks = this.packTiers[region.packTier];
-    if (!tierPacks) {
-      throw new BadRequestException(`Pack tier "${region.packTier}" is not configured`);
-    }
-
-    const packConfig = tierPacks[plan];
-    if (!packConfig) {
-      throw new BadRequestException(`Invalid plan "${plan}" for tier "${region.packTier}"`);
-    }
-
-    // Look up the Polar product ID from env
-    const envKey = `POLAR_PRODUCT_${region.packTier.toUpperCase()}_${plan.toUpperCase()}`;
-    const polarProductId = this.configService.get<string>(envKey);
     if (!polarProductId) {
-      throw new InternalServerErrorException(`Polar product not configured for ${envKey}`);
+      throw new InternalServerErrorException(`Polar product not configured (missing env var)`);
     }
 
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
@@ -868,7 +985,8 @@ export class PaymentsService {
         metadata: {
           userId: user.id,
           plan,
-          packTier: region.packTier,
+          model,
+            ...customData,
           reference,
         },
       });
@@ -883,7 +1001,7 @@ export class PaymentsService {
           userId,
           provider: 'polar',
           plan,
-          amountCents: packConfig.amountCents,
+          amountCents,
           currency: 'USD',
           reference,
           polarCheckoutId: checkout.id,
@@ -891,8 +1009,8 @@ export class PaymentsService {
           metadata: {
             userId,
             plan,
-            packTier: region.packTier,
             polarCheckoutId: checkout.id,
+            ...customData
           },
         },
       });
@@ -900,7 +1018,7 @@ export class PaymentsService {
       return {
         checkoutUrl: checkout.url,
         reference,
-        amountCents: packConfig.amountCents,
+        amountCents,
         currency: 'USD',
         plan,
       };
@@ -958,6 +1076,7 @@ export class PaymentsService {
           plan?: string;
           packTier?: string;
           reference?: string;
+          model?: string;
         };
         amount?: number;
         currency?: string;
@@ -980,14 +1099,8 @@ export class PaymentsService {
     }
 
     const plan = metadata?.plan || 'starter';
-    const packTier = metadata?.packTier || 'india';
-    const tierPacks = this.packTiers[packTier];
-    const packConfig = tierPacks?.[plan];
-
-    if (!packConfig) {
-      this.logger.warn(`Polar webhook: unknown pack tier/plan: ${packTier}/${plan}`);
-      return { received: true };
-    }
+    const model = metadata?.model || 'packs';
+    const paymentDate = new Date(); // Polar paid time not clearly in root event data, fallback
 
     await this.prisma.$transaction(async (tx) => {
       // Check idempotency
@@ -1009,15 +1122,41 @@ export class PaymentsService {
         return;
       }
 
-      // Apply pack credits
-      await this.applyPackPurchase(tx, userId, packConfig);
+      let subscriptionStartsAt: Date | undefined;
+      let subscriptionEndsAt: Date | undefined;
+      let baseAmountCents = 0;
 
-      // Update polar customer ID if provided
-      if (event.data?.customer_id) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { polarCustomerId: event.data.customer_id },
-        });
+      if (model === 'packs') {
+        const packTier = metadata?.packTier || 'india';
+        const packConfig = this.packTiers[packTier]?.[plan];
+        if (packConfig) {
+          await this.applyPackPurchase(tx, userId, packConfig);
+          baseAmountCents = packConfig.amountCents;
+          
+          if (event.data?.customer_id) {
+            await tx.user.update({
+              where: { id: userId },
+              data: { polarCustomerId: event.data.customer_id },
+            });
+          }
+        } else {
+             this.logger.warn(`Polar webhook: unknown pack tier/plan: ${packTier}/${plan}`);
+        }
+      } else {
+        const configuredPlan = this.paddlePlanConfig[plan] || this.paddlePlanConfig.monthly; // reuse
+        baseAmountCents = configuredPlan.amountCents;
+        const subResult = await this.applySubscriptionPurchase(
+          tx, 
+          userId, 
+          configuredPlan.durationDays, 
+          paymentDate, 
+          event.data?.customer_id, 
+          'polar'
+        );
+        if (subResult) {
+            subscriptionStartsAt = subResult.subscriptionStart;
+            subscriptionEndsAt = subResult.subscriptionEnd;
+        }
       }
 
       const reference = metadata?.reference || `polar_${checkoutId}`;
@@ -1027,31 +1166,36 @@ export class PaymentsService {
         where: { polarCheckoutId: checkoutId },
         update: {
           status: PaymentStatus.SUCCESS,
-          paidAt: new Date(),
-          amountCents: event.data?.amount || packConfig.amountCents,
+          paidAt: paymentDate,
+          amountCents: event.data?.amount || baseAmountCents,
           currency: event.data?.currency || 'USD',
+          subscriptionStartsAt,
+          subscriptionEndsAt,
           metadata: {
             ...(typeof existingTransaction?.metadata === 'object' && existingTransaction?.metadata
               ? (existingTransaction.metadata as Record<string, unknown>)
               : {}),
             verifiedAt: new Date().toISOString(),
             polarEventType: event.type,
+            model,
           },
         },
         create: {
           userId,
           provider: 'polar',
           plan,
-          amountCents: event.data?.amount || packConfig.amountCents,
+          amountCents: event.data?.amount || baseAmountCents,
           currency: event.data?.currency || 'USD',
           reference,
           polarCheckoutId: checkoutId,
           status: PaymentStatus.SUCCESS,
-          paidAt: new Date(),
+          paidAt: paymentDate,
+          subscriptionStartsAt,
+          subscriptionEndsAt,
           metadata: {
             userId,
             plan,
-            packTier,
+            model,
             polarEventType: event.type,
           },
         },
