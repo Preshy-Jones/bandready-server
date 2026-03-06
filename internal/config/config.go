@@ -139,3 +139,5 @@ func mustGetEnv(key string) string {
 	}
 	return v
 }
+
+// configUpdated
