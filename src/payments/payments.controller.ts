@@ -21,6 +21,10 @@ export class InitializePaymentDto {
   @IsOptional()
   @IsString()
   plan?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: 'packs' | 'subscriptions';
 }
 
 @Controller('payments')
@@ -92,7 +96,7 @@ export class PaymentsController {
     @CurrentUser() user: User,
     @Body() dto: InitializePaymentDto,
   ) {
-    return this.paymentsService.initializePaddleCheckout(user.id, dto?.plan || 'monthly');
+    return this.paymentsService.initializePaddleCheckout(user.id, dto?.plan || 'monthly', dto?.model || 'subscriptions');
   }
 
   @Post('paddle/webhook')
@@ -115,7 +119,7 @@ export class PaymentsController {
     @Body() dto: InitializePaymentDto,
     @Query('country') country?: string,
   ) {
-    return this.paymentsService.initializePolarCheckout(user.id, dto?.plan || 'starter', country);
+    return this.paymentsService.initializePolarCheckout(user.id, dto?.plan || 'starter', dto?.model || 'packs', country);
   }
 
   @Post('polar/webhook')

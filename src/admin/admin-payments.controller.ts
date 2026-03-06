@@ -30,11 +30,18 @@ export class AdminPaymentsController {
 
   @Get('settings')
   async getPaymentSettings() {
-    return this.adminService.getAppSetting('global_payment_provider');
+    const packProvider = await this.adminService.getAppSetting('active_pack_provider');
+    const subProvider = await this.adminService.getAppSetting('active_subscription_provider');
+    return {
+      activePackProvider: packProvider?.value || 'polar',
+      activeSubscriptionProvider: subProvider?.value || 'paddle',
+    };
   }
 
   @Put('settings')
-  async updatePaymentSettings(@Body() dto: { provider: 'paddle' | 'polar' }) {
-    return this.adminService.setAppSetting('global_payment_provider', dto.provider);
+  async updatePaymentSettings(@Body() dto: { activePackProvider: 'paddle' | 'polar', activeSubscriptionProvider: 'paddle' | 'polar' }) {
+    await this.adminService.setAppSetting('active_pack_provider', dto.activePackProvider);
+    await this.adminService.setAppSetting('active_subscription_provider', dto.activeSubscriptionProvider);
+    return { success: true };
   }
 }
