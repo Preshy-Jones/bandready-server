@@ -11,6 +11,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
 import { Polar } from '@polar-sh/sdk';
+import { Webhook } from 'standardwebhooks';
 
 type PlanKey = string;
 type PaymentProvider = 'paystack' | 'paddle' | 'polar';
@@ -136,7 +137,6 @@ export class PaymentsService {
 
   async getPublicConfig(countryCode?: string | null) {
     const region = getRegionConfig(countryCode);
-    console.log("region", region);
 
     const activePackProvider = region.provider === 'paystack' ? 'paystack' : await this.getActivePackProvider();
     const activeSubscriptionProvider = region.provider === 'paystack' ? 'paystack' : await this.getActiveSubscriptionProvider();
@@ -1029,6 +1029,8 @@ export class PaymentsService {
   }
 
   async handlePolarWebhook(rawBody: Buffer | undefined, headers: Record<string, string>) {
+    console.log("rawbody", rawBody);
+    
     const webhookSecret = this.configService.get<string>('POLAR_WEBHOOK_SECRET');
     if (!webhookSecret) {
       throw new InternalServerErrorException('Polar webhook secret is not configured');
@@ -1038,33 +1040,7 @@ export class PaymentsService {
       throw new UnauthorizedException('Missing webhook body');
     }
 
-    // Verify webhook signature
-    const signature = headers['webhook-signature'] || headers['polar-signature'];
-    if (!signature) {
-      throw new UnauthorizedException('Missing webhook signature');
-    }
-
-    // Polar uses standard webhook signature: ts=<timestamp>,v1=<hash>
-    const sigParts = signature.split(',');
-    const tsPart = sigParts.find(p => p.trim().startsWith('ts='));
-    const v1Part = sigParts.find(p => p.trim().startsWith('v1='));
-
-    if (!tsPart || !v1Part) {
-      throw new UnauthorizedException('Invalid webhook signature format');
-    }
-
-    const ts = tsPart.trim().replace('ts=', '');
-    const v1 = v1Part.trim().replace('v1=', '');
-    const signedPayload = `${ts}.${rawBody.toString('utf-8')}`;
-    const expectedHash = createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
-
-    const expectedBuffer = Buffer.from(expectedHash);
-    const v1Buffer = Buffer.from(v1);
-    if (expectedBuffer.length !== v1Buffer.length || !timingSafeEqual(expectedBuffer, v1Buffer)) {
-      throw new UnauthorizedException('Invalid webhook signature');
-    }
-
-    const event = JSON.parse(rawBody.toString('utf-8')) as {
+    let event: {
       type?: string;
       data?: {
         id?: string;
@@ -1083,6 +1059,17 @@ export class PaymentsService {
       };
     };
 
+    try {
+      const webhookSecretB64 = Buffer.from(webhookSecret, 'utf-8').toString('base64');
+      const webhook = new Webhook(webhookSecretB64);
+      event = webhook.verify(rawBody.toString('utf-8'), headers) as any;
+    } catch (error) {
+      this.logger.error('Polar webhook signature verification failed', error);
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+
+    console.log("event", event);
+    
     this.logger.log(`Polar webhook received: ${event.type}`);
 
     if (event.type !== 'order.paid' || !event.data?.id) {
