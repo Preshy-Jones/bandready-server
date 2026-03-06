@@ -215,3 +215,5 @@ func main() {
 }
 
 // dashboardRoutesAdded
+
+// waitlistHandlerRegistered
