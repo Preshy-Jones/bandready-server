@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { DeepgramClient } from '@deepgram/sdk';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { SYSTEM_PROMPT, generateAssessmentPrompt, generateModelAnswerPrompt } from '../prompts/assessment-prompt';
 import { getDynamicPart3Prompt } from '../prompts/dynamic-part3.prompt';
 
@@ -47,15 +49,64 @@ export interface TranscriptionResult {
 @Injectable()
 export class SpeechAnalysisService {
   private openai: OpenAI;
+  private deepgram?: DeepgramClient;
+  private readonly logger = new Logger(SpeechAnalysisService.name);
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     this.openai = new OpenAI({
       apiKey: this.configService.get<string>('OPENAI_API_KEY'),
     });
+    
+    const dgKey = this.configService.get<string>('DEEPGRAM_API_KEY');
+    if (dgKey) {
+      this.deepgram = new DeepgramClient({ apiKey: dgKey });
+    }
   }
 
   async transcribeAudio(audioBuffer: Buffer, fileName: string = 'audio.webm'): Promise<TranscriptionResult> {
-    // Use OpenAI's toFile helper for proper file conversion
+    const providerSetting = await this.prisma.appSetting.findUnique({
+      where: { key: 'active_speech_provider' },
+    });
+    
+    const provider = providerSetting?.value || 'deepgram';
+    
+    if (provider === 'deepgram' && this.deepgram) {
+      try {
+        this.logger.debug('Attempting transcription with Deepgram Nova-3');
+        const response: any = await this.deepgram.listen.v1.media.transcribeFile(
+          audioBuffer, 
+          { 
+            model: 'nova-3', 
+            smart_format: true, 
+            utterances: true,
+            punctuate: true,
+          }
+        );
+        
+        const alternatives = response?.result?.results?.channels?.[0]?.alternatives?.[0] || response?.results?.channels?.[0]?.alternatives?.[0];
+        if (!alternatives) throw new Error('No transcription alternatives returned from Deepgram');
+        
+        const words = (alternatives.words || []).map(w => ({
+          word: w.punctuated_word || w.word,
+          start: w.start,
+          end: w.end,
+        }));
+        
+        return {
+          text: alternatives.transcript,
+          words,
+          duration: response?.metadata?.duration || response?.result?.metadata?.duration || 0,
+        };
+      } catch (err) {
+        this.logger.error(`Deepgram transcription failed, falling back to Whisper: ${err.message}`);
+      }
+    }
+
+    // Fall back to or default to Whisper
+    this.logger.debug('Transcribing audio with OpenAI Whisper');
     const { toFile } = await import('openai/uploads');
     const file = await toFile(audioBuffer, fileName, { type: 'audio/webm' });
 

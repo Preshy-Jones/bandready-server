@@ -17,6 +17,19 @@ import { User } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 import { IsOptional, IsString } from 'class-validator';
 
+// Helper to extract the trusted country code from CDN headers
+function extractCountryFromHeaders(req: Request): string | null {
+  const country =
+    req.headers['x-vercel-ip-country'] ||
+    req.headers['cf-ipcountry'] ||
+    req.headers['x-country-code'];
+
+  if (typeof country === 'string') {
+    return country.toUpperCase();
+  }
+  return null;
+}
+
 export class InitializePaymentDto {
   @IsOptional()
   @IsString()
@@ -95,8 +108,20 @@ export class PaymentsController {
   async initializePaddleCheckout(
     @CurrentUser() user: User,
     @Body() dto: InitializePaymentDto,
+    @Req() req: Request,
+    @Query('country') requestedCountry?: string,
   ) {
-    return this.paymentsService.initializePaddleCheckout(user.id, dto?.plan || 'monthly', dto?.model || 'subscriptions');
+    const isDev = process.env.NODE_ENV === 'development';
+    const headerCountry = extractCountryFromHeaders(req);
+    // In production, we ONLY trust the CDN header. In dev, we allow the requested country for local testing.
+    const resolvedCountry = (isDev ? (headerCountry || requestedCountry) : headerCountry) || undefined;
+
+    return this.paymentsService.initializePaddleCheckout(
+      user.id,
+      dto?.plan || 'monthly',
+      dto?.model || 'subscriptions',
+      resolvedCountry
+    );
   }
 
   @Post('paddle/webhook')
@@ -109,17 +134,25 @@ export class PaymentsController {
   }
 
   // ==========================================
-  // POLAR ENDPOINTS
-  // ==========================================
-
   @Post('polar/checkout')
   @UseGuards(AuthGuard('jwt'))
   async initializePolarCheckout(
     @CurrentUser() user: User,
     @Body() dto: InitializePaymentDto,
-    @Query('country') country?: string,
+    @Req() req: Request,
+    @Query('country') requestedCountry?: string,
   ) {
-    return this.paymentsService.initializePolarCheckout(user.id, dto?.plan || 'starter', dto?.model || 'packs', country);
+    const isDev = process.env.NODE_ENV === 'development';
+    const headerCountry = extractCountryFromHeaders(req);
+    // In production, we ONLY trust the CDN header. In dev, we allow the requested country for local testing.
+    const resolvedCountry = (isDev ? (headerCountry || requestedCountry) : headerCountry) || undefined;
+
+    return this.paymentsService.initializePolarCheckout(
+      user.id,
+      dto?.plan || 'starter',
+      dto?.model || 'packs',
+      resolvedCountry
+    );
   }
 
   @Post('polar/webhook')

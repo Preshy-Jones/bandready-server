@@ -586,7 +586,7 @@ export class PaymentsService {
   // PADDLE METHODS
   // ==========================================
 
-  async initializePaddleCheckout(userId: string, plan: PlanKey = 'monthly', model: PaymentModel = 'subscriptions') {
+  async initializePaddleCheckout(userId: string, plan: PlanKey = 'monthly', model: PaymentModel = 'subscriptions', countryCode?: string | null) {
     const paddleApiKey = this.configService.get<string>('PADDLE_API_KEY');
     if (!paddleApiKey) {
       throw new InternalServerErrorException('Paddle is not configured');
@@ -601,7 +601,8 @@ export class PaymentsService {
       throw new BadRequestException('User not found');
     }
 
-    const region = getRegionConfig(user.country);
+    const resolvedCountry = countryCode || user.country;
+    const region = getRegionConfig(resolvedCountry);
     if (region.provider === 'paystack') {
       throw new ForbiddenException('Nigerian users must purchase session packs via Paystack');
     }

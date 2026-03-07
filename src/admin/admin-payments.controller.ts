@@ -32,16 +32,21 @@ export class AdminPaymentsController {
   async getPaymentSettings() {
     const packProvider = await this.adminService.getAppSetting('active_pack_provider');
     const subProvider = await this.adminService.getAppSetting('active_subscription_provider');
+    const speechProvider = await this.adminService.getAppSetting('active_speech_provider');
     return {
       activePackProvider: packProvider?.value || 'polar',
       activeSubscriptionProvider: subProvider?.value || 'paddle',
+      activeSpeechProvider: speechProvider?.value || 'whisper', // Default to existing whisper
     };
   }
 
   @Put('settings')
-  async updatePaymentSettings(@Body() dto: { activePackProvider: 'paddle' | 'polar', activeSubscriptionProvider: 'paddle' | 'polar' }) {
+  async updatePaymentSettings(@Body() dto: { activePackProvider: 'paddle' | 'polar', activeSubscriptionProvider: 'paddle' | 'polar', activeSpeechProvider?: 'whisper' | 'deepgram' }) {
     await this.adminService.setAppSetting('active_pack_provider', dto.activePackProvider);
     await this.adminService.setAppSetting('active_subscription_provider', dto.activeSubscriptionProvider);
+    if (dto.activeSpeechProvider) {
+      await this.adminService.setAppSetting('active_speech_provider', dto.activeSpeechProvider);
+    }
     return { success: true };
   }
 }
