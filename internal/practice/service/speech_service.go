@@ -262,3 +262,5 @@ Provide a detailed assessment in the following JSON format:
 }
 
 // examTypeQueryAdded - supports ACADEMIC and GENERAL_TRAINING
+
+// deepgramPrimaryTranscriptionAdded
