@@ -519,11 +519,19 @@ export class PracticeService {
         _count: true,
       }),
 
-      // Score trend for the chart (chronological order).
+      // Score trend for the chart — most recent 30 days in chronological order.
+      // Previously used `take: 10` with `asc` which returned the oldest 10 sessions,
+      // causing the chart to show stale history while the average reflected recent sessions.
       this.prisma.practiceSession.findMany({
-        where: { userId, completedAt: { not: null } },
+        where: {
+          userId,
+          completedAt: {
+            not: null,
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          },
+          overallBandScore: { not: null },
+        },
         orderBy: { completedAt: 'asc' },
-        take: 10,
         select: {
           overallBandScore: true,
           completedAt: true,

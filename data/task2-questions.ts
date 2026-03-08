@@ -118,7 +118,12 @@ export const task2Questions = [
     prompt:
       'Many people use social media to keep in touch with others and follow news. What are the advantages and disadvantages of social media for individuals and society?',
   },
-
+  { 
+    id: 't2-advdis-004',
+     taskType: 'TASK2',
+    subType: 'advantages_disadvantages',
+    prompt:"In some countries, the number of young people opting to enrol in work-based training over universities has increased rapidly. While this approach certainly offers many benefits, I believe that the advantages fail to outweigh its disadvantages."
+  },
   // TWO-PART
   {
     id: 't2-twopart-001',
@@ -180,4 +185,11 @@ export const task2Questions = [
     prompt:
       'Research indicates that the characteristics we are born with have much more influence on our personality and development than any experiences we may have in our life.\n\nWhich do you consider to be the major influence?',
   },
+  {
+    prompt:
+      "Some people argue that all experimentation on animals is bad and should be outlawed. However, others believe that important scientific discoveries can be made from animal experiments. Can experimentation on animals be justified? Are there any alternatives? Give reasons for your answer and include any relevant examples from your own knowledge and experience. Write at least 250 words.",
+    subType: 'two_part',
+    taskType: 'TASK2',
+    id: 't2-official-general-003',
+  }
 ];
