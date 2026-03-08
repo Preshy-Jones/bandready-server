@@ -35,8 +35,14 @@ async function bootstrap() {
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new SentryFilter(httpAdapter));
   
-  // Global prefix for API routes
-  app.setGlobalPrefix('api');
+  // Global prefix for API routes with webhook exclusions
+  app.setGlobalPrefix('api', {
+    exclude: [
+      'payments/paystack/webhook',
+      'payments/paddle/webhook',
+      'payments/polar/webhook',
+    ],
+  });
   
   const port = process.env.PORT || 3001;
   await app.listen(port);
