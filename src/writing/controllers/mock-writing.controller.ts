@@ -6,6 +6,7 @@ import {
   UseGuards,
   Logger,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -34,7 +35,10 @@ export class MockWritingController {
    * Checks that the user has enough writing balance (costs 2 credits).
    */
   @Post('start')
-  async startMockTest(@CurrentUser() user: any) {
+  async startMockTest(
+    @CurrentUser() user: any,
+    @Query('examType') examType?: string,
+  ) {
     // Check writing balance (costs 2 credits)
     const canStart = await this.usersService.canStartSession(user.id, 'writing');
     if (!canStart) {
@@ -50,6 +54,7 @@ export class MockWritingController {
         writingBalance: true,
         subscriptionTier: true,
         subscriptionExpiresAt: true,
+        examType: true,
       },
     });
 
@@ -63,9 +68,14 @@ export class MockWritingController {
       );
     }
 
-    // Fetch random Task 1 and Task 2 questions
+    // Resolve exam type: query param takes precedence, fall back to user profile
+    const resolvedExamType = examType
+      ? examType.toUpperCase()
+      : (userRecord?.examType || 'ACADEMIC');
+
+    // Fetch random Task 1 (filtered by exam type) and Task 2 questions
     const [task1Count, task2Count] = await Promise.all([
-      this.prisma.writingQuestion.count({ where: { taskType: 'TASK1', isActive: true } }),
+      this.prisma.writingQuestion.count({ where: { taskType: 'TASK1', isActive: true, examType: resolvedExamType as any } }),
       this.prisma.writingQuestion.count({ where: { taskType: 'TASK2', isActive: true } }),
     ]);
 
@@ -78,7 +88,7 @@ export class MockWritingController {
 
     const [task1Question, task2Question] = await Promise.all([
       this.prisma.writingQuestion.findFirst({
-        where: { taskType: 'TASK1', isActive: true },
+        where: { taskType: 'TASK1', isActive: true, examType: resolvedExamType as any },
         skip: task1Offset,
       }),
       this.prisma.writingQuestion.findFirst({
