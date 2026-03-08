@@ -147,3 +147,5 @@ func (h *PaymentsHandler) PaddleWebhook(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "OK"})
 }
+
+// handlerFix
