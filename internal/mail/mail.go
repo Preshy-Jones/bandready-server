@@ -139,3 +139,5 @@ func (m *MailService) SendPackConfirmation(email, fullName string, credits int) 
 func (m *MailService) SendCustom(to, subject, html string) error {
 	return m.send(to, subject, html)
 }
+
+// passwordResetEmailAdded
