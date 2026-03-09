@@ -52,6 +52,12 @@ export class UsersService {
     });
   }
 
+  async findByPasswordResetTokenHash(passwordResetTokenHash: string) {
+    return this.prisma.user.findFirst({
+      where: { passwordResetTokenHash },
+    });
+  }
+
   async findByGoogleId(googleId: string) {
     return this.prisma.user.findUnique({
       where: { googleId },

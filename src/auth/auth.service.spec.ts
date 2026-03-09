@@ -18,6 +18,7 @@ describe('AuthService', () => {
     // Define mock objects
     const mockUsersService = {
       findByEmail: jest.fn(),
+      findByPasswordResetTokenHash: jest.fn(),
       findByGoogleId: jest.fn(),
       findById: jest.fn(),
       createWithPassword: jest.fn(),
@@ -32,6 +33,7 @@ describe('AuthService', () => {
 
     const mockMailService = {
       sendVerificationOtp: jest.fn(),
+      sendPasswordResetEmail: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -89,6 +91,24 @@ describe('AuthService', () => {
         requiresOtp: true,
         email: 'test@test.com'
       });
+    });
+
+    it('should throw if verification email sending fails during registration', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPass');
+
+      const mockCreatedUser = { id: 'user-id', email: 'test@test.com' };
+      usersService.createWithPassword.mockResolvedValue(mockCreatedUser as any);
+      usersService.update.mockResolvedValue(mockCreatedUser as any);
+      mailService.sendVerificationOtp.mockResolvedValue(false);
+
+      await expect(
+        authService.register({
+          email: 'test@test.com',
+          password: 'pass',
+          fullName: 'Test User',
+        }),
+      ).rejects.toThrow('Failed to send verification email. Please try again later.');
     });
   });
 
@@ -196,6 +216,78 @@ describe('AuthService', () => {
       const result = await authService.validateGoogleUser(gUser);
       expect(usersService.createFromGoogle).toHaveBeenCalledWith(gUser);
       expect(result).toEqual(expect.objectContaining({ id: 'user2', isNew: true }));
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should return a generic success message when user does not exist', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+
+      await expect(authService.forgotPassword('missing@test.com')).resolves.toEqual({
+        message: 'If an account matches this email, a password reset link has been sent.',
+      });
+      expect(mailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    it('should persist a reset token and send email when user exists', async () => {
+      usersService.findByEmail.mockResolvedValue({
+        id: 'user1',
+        email: 'test@test.com',
+        fullName: 'Test User',
+      } as any);
+      usersService.update.mockResolvedValue({} as any);
+      mailService.sendPasswordResetEmail.mockResolvedValue(true);
+
+      const result = await authService.forgotPassword('test@test.com');
+
+      expect(usersService.update).toHaveBeenCalledWith(
+        'user1',
+        expect.objectContaining({
+          passwordResetTokenHash: expect.any(String),
+          passwordResetTokenExpiry: expect.any(Date),
+        }),
+      );
+      expect(mailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'test@test.com',
+        'Test User',
+        expect.any(String),
+      );
+      expect(result).toEqual({
+        message: 'If an account matches this email, a password reset link has been sent.',
+      });
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should reject invalid or expired reset tokens', async () => {
+      usersService.findByPasswordResetTokenHash.mockResolvedValue(null);
+
+      await expect(authService.resetPassword('bad-token', 'new-password')).rejects.toThrow(
+        'Reset link is invalid or has expired.',
+      );
+    });
+
+    it('should update the password and clear reset fields for valid tokens', async () => {
+      usersService.findByPasswordResetTokenHash.mockResolvedValue({
+        id: 'user1',
+        passwordResetTokenExpiry: new Date(Date.now() + 60_000),
+      } as any);
+      usersService.update.mockResolvedValue({} as any);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('new-hash');
+
+      await expect(authService.resetPassword('valid-token', 'new-password')).resolves.toEqual({
+        message: 'Password reset successful. You can now sign in with your new password.',
+      });
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 10);
+      expect(usersService.update).toHaveBeenCalledWith(
+        'user1',
+        expect.objectContaining({
+          passwordHash: 'new-hash',
+          passwordResetTokenHash: null,
+          passwordResetTokenExpiry: null,
+        }),
+      );
     });
   });
 });

@@ -16,6 +16,58 @@ export class MailService {
     this.fromEmail = this.configService.get<string>('MAIL_FROM') || 'BandReady <onboarding@resend.dev>';
   }
 
+  async sendPasswordResetEmail(
+    email: string,
+    fullName: string | null | undefined,
+    resetToken: string,
+  ): Promise<boolean> {
+    const firstName = fullName?.split(' ')[0] || 'there';
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+    this.logger.log(`Attempting to send password reset email to ${email}`);
+
+    if (!this.configService.get<string>('RESEND_API_KEY')) {
+      this.logger.warn(`[DEV MODE] Would send password reset link ${resetUrl} to ${email}`);
+      return true;
+    }
+
+    try {
+      const response = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: 'Reset your BandReady password',
+        html: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2E3192;">Reset your password</h2>
+            <p>Hi ${firstName},</p>
+            <p>We received a request to reset your BandReady password.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+            </div>
+            <p style="color: #64748B; font-size: 14px;">This link will expire in 1 hour.</p>
+            <p style="color: #64748B; font-size: 14px;">If you did not request this, you can safely ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
+          </div>
+        `,
+      });
+
+      if (response.error) {
+        this.logger.error(
+          `Resend rejected password reset email to ${email}: ${response.error.name} - ${response.error.message}`,
+        );
+        return false;
+      }
+
+      this.logger.log(`Successfully sent password reset email to ${email}. ID: ${response.data?.id}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send password reset email to ${email}`, error);
+      return false;
+    }
+  }
+
   async sendVerificationOtp(email: string, fullName: string, otp: string): Promise<boolean> {
     const firstName = fullName?.split(' ')[0] || 'there';
     
@@ -28,7 +80,7 @@ export class MailService {
     }
 
     try {
-      const data = await this.resend.emails.send({
+      const response = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
         subject: 'Verify your BandReady account',
@@ -43,6 +95,7 @@ export class MailService {
             </div>
             
             <p style="color: #64748B; font-size: 14px;">This code will expire in 15 minutes.</p>
+            <p style="color: #64748B; font-size: 14px;">If you already left the verification page, just log in again and we will send you a fresh code.</p>
             <p>If you didn't request this, you can safely ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
             <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
@@ -50,7 +103,14 @@ export class MailService {
         `,
       });
 
-      this.logger.log(`Successfully sent OTP email to ${email}. ID: ${data.data?.id}`);
+      if (response.error) {
+        this.logger.error(
+          `Resend rejected OTP email to ${email}: ${response.error.name} - ${response.error.message}`,
+        );
+        return false;
+      }
+
+      this.logger.log(`Successfully sent OTP email to ${email}. ID: ${response.data?.id}`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send OTP email to ${email}`, error);
@@ -226,4 +286,3 @@ export class MailService {
     }
   }
 }
-

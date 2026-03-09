@@ -34,6 +34,8 @@ model User {
   isEmailVerified       Boolean   @default(false) @map("is_email_verified")
   emailVerificationOtp  String?   @map("email_verification_otp")
   emailVerificationOtpExpiry DateTime? @map("email_verification_otp_expiry")
+  passwordResetTokenHash String?  @map("password_reset_token_hash")
+  passwordResetTokenExpiry DateTime? @map("password_reset_token_expiry")
   speakingBalance       Int       @default(0) @map("speaking_balance")
   writingBalance        Int       @default(0) @map("writing_balance")
   drillsExpireAt        DateTime? @map("drills_expire_at")

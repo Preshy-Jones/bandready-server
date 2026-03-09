@@ -4,6 +4,7 @@ import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
 
 export interface GoogleUser {
   googleId: string;
@@ -60,8 +61,11 @@ export class AuthService {
       isEmailVerified: false,
     } as Prisma.UserUpdateInput);
     
-    // Send email
-    await this.mailService.sendVerificationOtp(email, fullName, otp);
+    // Send email and fail the registration flow if delivery was rejected.
+    const sent = await this.mailService.sendVerificationOtp(email, fullName, otp);
+    if (!sent) {
+      throw new BadRequestException('Failed to send verification email. Please try again later.');
+    }
     
     return {
       message: 'Registration successful. Please verify your email.',
@@ -222,6 +226,61 @@ export class AuthService {
     };
   }
 
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      return {
+        message: 'If an account matches this email, a password reset link has been sent.',
+      };
+    }
+
+    const resetToken = randomBytes(32).toString('hex');
+    const resetTokenHash = this.hashToken(resetToken);
+    const expiry = new Date();
+    expiry.setHours(expiry.getHours() + 1);
+
+    await this.usersService.update(user.id, {
+      passwordResetTokenHash: resetTokenHash,
+      passwordResetTokenExpiry: expiry,
+    } as Prisma.UserUpdateInput);
+
+    const sent = await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.fullName,
+      resetToken,
+    );
+
+    if (!sent) {
+      throw new BadRequestException('Failed to send password reset email. Please try again later.');
+    }
+
+    return {
+      message: 'If an account matches this email, a password reset link has been sent.',
+    };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const user = await this.usersService.findByPasswordResetTokenHash(this.hashToken(token));
+
+    if (!user || !user.passwordResetTokenExpiry || user.passwordResetTokenExpiry < new Date()) {
+      throw new BadRequestException('Reset link is invalid or has expired.');
+    }
+
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    await this.usersService.update(user.id, {
+      passwordHash,
+      passwordResetTokenHash: null,
+      passwordResetTokenExpiry: null,
+    } as Prisma.UserUpdateInput);
+
+    return {
+      message: 'Password reset successful. You can now sign in with your new password.',
+    };
+  }
+
   async generateTokens(userId: string, email: string, role?: string) {
     const payload: JwtPayload = { sub: userId, email, role };
     
@@ -236,5 +295,9 @@ export class AuthService {
   async validateJwtPayload(payload: JwtPayload) {
     const user = await this.usersService.findById(payload.sub);
     return user;
+  }
+
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
   }
 }
