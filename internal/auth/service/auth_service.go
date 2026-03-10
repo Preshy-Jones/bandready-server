@@ -303,3 +303,5 @@ func sha256Hash(input string) string {
 // otpVerificationAdded - 6-digit OTP, 15min expiry
 
 // forgotPasswordFlow - SHA256 token, 1hr expiry
+
+// forgotPasswordTested
