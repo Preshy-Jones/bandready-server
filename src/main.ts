@@ -40,6 +40,6 @@ async function bootstrap() {
   
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 BandReady API running smoooooothly on http://localhost:${port}`);
+  console.log(`🚀 BandReady API running smoooothly on http://localhost:${port}`);
 }
 bootstrap();
