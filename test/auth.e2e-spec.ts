@@ -15,12 +15,14 @@ describe('AuthController (e2e)', () => {
   beforeAll(async () => {
     mockUsersService = {
       findByEmail: jest.fn(),
+      findByPasswordResetTokenHash: jest.fn(),
       createWithPassword: jest.fn(),
       update: jest.fn(),
     };
 
     mockMailService = {
       sendVerificationOtp: jest.fn().mockResolvedValue(true),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
     };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -72,6 +74,30 @@ describe('AuthController (e2e)', () => {
       return request(app.getHttpServer())
         .post('/auth/register')
         .send({ email: 'exists@example.com', password: 'password123', fullName: 'Test' })
+        .expect(400);
+    });
+  });
+
+  describe('/auth/forgot-password (POST)', () => {
+    it('returns 200 for a valid email payload', async () => {
+      (mockUsersService.findByEmail as jest.Mock).mockResolvedValue(null);
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/forgot-password')
+        .send({ email: 'test@example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        message: 'If an account matches this email, a password reset link has been sent.',
+      });
+    });
+  });
+
+  describe('/auth/reset-password (POST)', () => {
+    it('returns 400 if password is too short', async () => {
+      return request(app.getHttpServer())
+        .post('/auth/reset-password')
+        .send({ token: 'token', password: '123' })
         .expect(400);
     });
   });
