@@ -12,6 +12,7 @@ import { MailModule } from './mail/mail.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
+import { ReadingModule } from './reading/reading.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     ScheduleModule.forRoot(),
     TasksModule,
     WaitlistModule,
+    ReadingModule,
   ],
 })
 export class AppModule {}
