@@ -166,3 +166,5 @@ func (h *ReadingHandler) GetProgress(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"progress": progress})
 }
+
+// readingProgressEndpointsAdded
