@@ -1,6 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Prisma,
+  ReadingQuestion,
+  ReadingQuestionType,
+  ReadingSessionMode,
+  ReadingTestType,
+} from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { StartReadingSessionDto } from './dto/start-reading-session.dto';
+import { SubmitReadingAnswerDto } from './dto/submit-reading-answer.dto';
 
 @Injectable()
 export class ReadingService {
@@ -161,62 +169,585 @@ export class ReadingService {
     }
   }
 
-  startSession(payload: unknown) {
+  async getSession(sessionId: string, userId: string) {
+    let session;
+
+    try {
+      session = await this.prisma.readingSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          passages: {
+            orderBy: { passageOrder: 'asc' },
+            include: {
+              passage: {
+                include: {
+                  paragraphs: { orderBy: { paragraphIndex: 'asc' } },
+                  questionSets: {
+                    orderBy: { questionRangeStart: 'asc' },
+                    include: {
+                      questions: {
+                        orderBy: { questionNumber: 'asc' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          answers: true,
+          results: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_session', error, { sessionId });
+    }
+
+    if (!session) {
+      throw new NotFoundException('Reading session not found.');
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this reading session.');
+    }
+
     return {
-      status: 'not_implemented',
-      resource: 'reading_session',
-      payload,
-      message: 'Reading session creation is not implemented yet.',
+      status: 'ready',
+      session: {
+        id: session.id,
+        testType: session.testType,
+        mode: session.mode,
+        isTimed: session.isTimed,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+        timeSpentSeconds: session.timeSpentSeconds,
+        createdAt: session.createdAt,
+      },
+      passages: session.passages.map((item) => ({
+        id: item.id,
+        passageOrder: item.passageOrder,
+        timeSpentSeconds: item.timeSpentSeconds,
+        passage: this.serializePassage(item.passage),
+      })),
+      answers: session.answers.map((answer) => ({
+        questionId: answer.questionId,
+        answer: answer.userAnswer,
+        isCorrect: answer.isCorrect,
+        timeSpentSeconds: answer.timeSpentSeconds,
+        answeredAt: answer.answeredAt,
+      })),
+      latestResult: session.results[0]
+        ? {
+            rawScore: session.results[0].rawScore,
+            totalQuestions: session.results[0].totalQuestions,
+            bandScore: Number(session.results[0].bandScore),
+            questionTypeBreakdown: session.results[0].questionTypeBreakdown,
+            skillBreakdown: session.results[0].skillBreakdown,
+            timeManagement: session.results[0].timeManagement,
+            createdAt: session.results[0].createdAt,
+          }
+        : null,
     };
   }
 
-  submitAnswer(sessionId: string, payload: unknown) {
+  async startSession(userId: string, payload: StartReadingSessionDto) {
+    if (payload.mode !== ReadingSessionMode.SINGLE_PASSAGE) {
+      throw new BadRequestException('Only SINGLE_PASSAGE reading sessions are implemented right now.');
+    }
+
+    const where: Prisma.ReadingPassageWhereInput = {
+      isActive: true,
+      testType: payload.testType as ReadingTestType,
+    };
+
+    if (payload.passageId) {
+      where.id = payload.passageId;
+    }
+
+    let passage;
+
+    try {
+      passage = await this.prisma.readingPassage.findFirst({
+        where,
+        include: {
+          paragraphs: { orderBy: { paragraphIndex: 'asc' } },
+          questionSets: {
+            orderBy: { questionRangeStart: 'asc' },
+            include: {
+              questions: { orderBy: { questionNumber: 'asc' } },
+            },
+          },
+        },
+        orderBy: payload.passageId ? undefined : { createdAt: 'desc' },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_session_start', error, { payload });
+    }
+
+    if (!passage) {
+      throw new NotFoundException('No reading passage is available for that configuration.');
+    }
+
+    let session;
+
+    try {
+      session = await this.prisma.readingSession.create({
+        data: {
+          userId,
+          testType: payload.testType as ReadingTestType,
+          mode: payload.mode as ReadingSessionMode,
+          isTimed: payload.isTimed,
+          passages: {
+            create: {
+              passageId: passage.id,
+              passageOrder: 1,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_session_start', error, { payload });
+    }
+
     return {
-      status: 'not_implemented',
-      resource: 'reading_answer',
-      sessionId,
-      payload,
-      message: 'Reading answer submission is not implemented yet.',
+      status: 'ready',
+      session: {
+        id: session.id,
+        testType: session.testType,
+        mode: session.mode,
+        isTimed: session.isTimed,
+        startedAt: session.startedAt,
+      },
+      passage: this.serializePassage(passage),
     };
   }
 
-  completeSession(sessionId: string) {
+  async submitAnswer(sessionId: string, userId: string, payload: SubmitReadingAnswerDto) {
+    let session;
+
+    try {
+      session = await this.prisma.readingSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          passages: {
+            include: {
+              passage: {
+                select: { id: true },
+              },
+            },
+          },
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_answer', error, { sessionId });
+    }
+
+    if (!session) {
+      throw new NotFoundException('Reading session not found.');
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this reading session.');
+    }
+
+    if (session.completedAt) {
+      throw new BadRequestException('This reading session has already been completed.');
+    }
+
+    const allowedPassageIds = session.passages.map((item) => item.passage.id);
+
+    let question;
+
+    try {
+      question = await this.prisma.readingQuestion.findFirst({
+        where: {
+          id: payload.questionId,
+          passageId: { in: allowedPassageIds },
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_answer', error, { sessionId });
+    }
+
+    if (!question) {
+      throw new NotFoundException('Reading question not found for this session.');
+    }
+
+    const evaluation = this.evaluateAnswer(question, payload.answer);
+
+    let answer;
+
+    try {
+      answer = await this.prisma.readingAnswer.upsert({
+        where: {
+          sessionId_questionId: {
+            sessionId,
+            questionId: payload.questionId,
+          },
+        },
+        update: {
+          userAnswer: evaluation.persistedAnswer as Prisma.InputJsonValue,
+          isCorrect: evaluation.isCorrect,
+          timeSpentSeconds: payload.timeSpentSeconds,
+          answeredAt: new Date(),
+        },
+        create: {
+          sessionId,
+          questionId: payload.questionId,
+          userAnswer: evaluation.persistedAnswer as Prisma.InputJsonValue,
+          isCorrect: evaluation.isCorrect,
+          timeSpentSeconds: payload.timeSpentSeconds,
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_answer', error, { sessionId });
+    }
+
     return {
-      status: 'not_implemented',
-      resource: 'reading_completion',
-      sessionId,
-      message: 'Reading session completion is not implemented yet.',
+      status: 'ready',
+      answer: {
+        id: answer.id,
+        questionId: answer.questionId,
+        answer: answer.userAnswer,
+        isCorrect: answer.isCorrect,
+        timeSpentSeconds: answer.timeSpentSeconds,
+        answeredAt: answer.answeredAt,
+      },
+      evaluation: {
+        isCorrect: evaluation.isCorrect,
+        acceptedAnswers: evaluation.acceptedAnswers,
+        explanation: question.explanation,
+      },
     };
   }
 
-  getResults(sessionId: string) {
+  async completeSession(sessionId: string, userId: string) {
+    let session;
+
+    try {
+      session = await this.prisma.readingSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          passages: {
+            include: {
+              passage: {
+                include: {
+                  questions: true,
+                },
+              },
+            },
+          },
+          answers: true,
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_completion', error, { sessionId });
+    }
+
+    if (!session) {
+      throw new NotFoundException('Reading session not found.');
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this reading session.');
+    }
+
+    const allQuestions = session.passages.flatMap((item) => item.passage.questions);
+    if (allQuestions.length === 0) {
+      throw new BadRequestException('This reading session has no questions to score.');
+    }
+
+    const rawScore = session.answers.filter((answer) => answer.isCorrect).length;
+    const totalQuestions = allQuestions.length;
+    const bandScore = this.convertRawScoreToBand(rawScore, totalQuestions);
+    const questionTypeBreakdown = this.buildQuestionTypeBreakdown(allQuestions, session.answers);
+    const skillBreakdown = this.buildSkillBreakdown(allQuestions, session.answers);
+    const timeSpentSeconds =
+      Math.max(
+        0,
+        Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000),
+      ) || session.timeSpentSeconds || 0;
+
+    let result;
+
+    try {
+      result = await this.prisma.$transaction(async (tx) => {
+        const savedSession = await tx.readingSession.update({
+          where: { id: sessionId },
+          data: {
+            completedAt: session.completedAt ?? new Date(),
+            timeSpentSeconds,
+          },
+        });
+
+        const existingResult = await tx.readingResult.findFirst({
+          where: { sessionId },
+          select: { id: true },
+        });
+
+        const timeManagement = {
+          isTimed: savedSession.isTimed,
+          totalTimeSpentSeconds: timeSpentSeconds,
+          averageSecondsPerQuestion: Math.round(timeSpentSeconds / totalQuestions),
+        } as Prisma.InputJsonValue;
+
+        const savedResult = existingResult
+          ? await tx.readingResult.update({
+              where: { id: existingResult.id },
+              data: {
+                rawScore,
+                totalQuestions,
+                bandScore,
+                questionTypeBreakdown: questionTypeBreakdown as Prisma.InputJsonValue,
+                skillBreakdown: skillBreakdown as Prisma.InputJsonValue,
+                timeManagement,
+              },
+            })
+          : await tx.readingResult.create({
+              data: {
+                sessionId,
+                rawScore,
+                totalQuestions,
+                bandScore,
+                questionTypeBreakdown: questionTypeBreakdown as Prisma.InputJsonValue,
+                skillBreakdown: skillBreakdown as Prisma.InputJsonValue,
+                timeManagement,
+              },
+            });
+
+        for (const breakdown of Object.values(questionTypeBreakdown)) {
+          const existingProgress = await tx.readingProgress.findUnique({
+            where: {
+              userId_questionType: {
+                userId,
+                questionType: breakdown.questionType as ReadingQuestionType,
+              },
+            },
+          });
+
+          const nextAttempts = (existingProgress?.attempts ?? 0) + breakdown.total;
+          const nextCorrect = (existingProgress?.correct ?? 0) + breakdown.correct;
+
+          await tx.readingProgress.upsert({
+            where: {
+              userId_questionType: {
+                userId,
+                questionType: breakdown.questionType as ReadingQuestionType,
+              },
+            },
+            update: {
+              attempts: { increment: breakdown.total },
+              correct: { increment: breakdown.correct },
+              accuracyRate: (nextCorrect / nextAttempts) * 100,
+              lastPracticedAt: new Date(),
+            },
+            create: {
+              userId,
+              questionType: breakdown.questionType as ReadingQuestionType,
+              attempts: breakdown.total,
+              correct: breakdown.correct,
+              accuracyRate: (breakdown.correct / breakdown.total) * 100,
+              lastPracticedAt: new Date(),
+            },
+          });
+        }
+
+        return savedResult;
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_completion', error, { sessionId });
+    }
+
     return {
-      status: 'not_implemented',
-      resource: 'reading_results',
-      sessionId,
-      message: 'Reading session results are not implemented yet.',
+      status: 'ready',
+      result: {
+        sessionId,
+        rawScore,
+        totalQuestions,
+        bandScore: Number(result.bandScore),
+        questionTypeBreakdown: result.questionTypeBreakdown,
+        skillBreakdown: result.skillBreakdown,
+        timeManagement: result.timeManagement,
+        createdAt: result.createdAt,
+      },
     };
   }
 
-  getProgress() {
+  async getResults(sessionId: string, userId: string) {
+    let session;
+
+    try {
+      session = await this.prisma.readingSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          results: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_results', error, { sessionId });
+    }
+
+    if (!session) {
+      throw new NotFoundException('Reading session not found.');
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this reading session.');
+    }
+
+    if (!session.results[0]) {
+      throw new BadRequestException('Reading session results are not available yet. Complete the session first.');
+    }
+
     return {
-      status: 'not_implemented',
-      resource: 'reading_progress',
-      overallStats: null,
-      questionTypeProgress: [],
-      recentSessions: [],
-      weakAreas: [],
-      recommendations: [],
-      message: 'Reading progress analytics are not implemented yet.',
+      status: 'ready',
+      result: {
+        sessionId,
+        rawScore: session.results[0].rawScore,
+        totalQuestions: session.results[0].totalQuestions,
+        bandScore: Number(session.results[0].bandScore),
+        questionTypeBreakdown: session.results[0].questionTypeBreakdown,
+        skillBreakdown: session.results[0].skillBreakdown,
+        timeManagement: session.results[0].timeManagement,
+        createdAt: session.results[0].createdAt,
+      },
     };
   }
 
-  getQuestionTypeProgress() {
+  async getProgress(userId: string) {
+    let results;
+    let progressRows;
+    let recentSessions;
+
+    try {
+      [results, progressRows, recentSessions] = await Promise.all([
+        this.prisma.readingResult.findMany({
+          where: { session: { userId } },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.readingProgress.findMany({
+          where: { userId },
+          orderBy: { updatedAt: 'desc' },
+        }),
+        this.prisma.readingSession.findMany({
+          where: {
+            userId,
+            completedAt: { not: null },
+          },
+          orderBy: { completedAt: 'desc' },
+          take: 5,
+          include: {
+            passages: {
+              orderBy: { passageOrder: 'asc' },
+              include: {
+                passage: {
+                  select: {
+                    id: true,
+                    title: true,
+                    difficultyLevel: true,
+                    topicCategory: true,
+                  },
+                },
+              },
+            },
+            results: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        }),
+      ]);
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_progress', error, {
+        overallStats: {
+          completedSessions: 0,
+          averageBandScore: null,
+          bestBandScore: null,
+        },
+        questionTypeProgress: [],
+        recentSessions: [],
+        weakAreas: [],
+        recommendations: [],
+      });
+    }
+
+    const completedSessions = results.length;
+    const avgBandScore =
+      completedSessions === 0
+        ? null
+        : Number(
+            (
+              results.reduce((sum, item) => sum + Number(item.bandScore), 0) /
+              completedSessions
+            ).toFixed(2),
+          );
+
+    const weakAreas = progressRows
+      .filter((row) => Number(row.accuracyRate ?? 0) < 70)
+      .sort((a, b) => Number(a.accuracyRate ?? 0) - Number(b.accuracyRate ?? 0))
+      .slice(0, 3)
+      .map((row) => ({
+        questionType: row.questionType,
+        accuracyRate: Number(row.accuracyRate ?? 0),
+      }));
+
     return {
-      status: 'not_implemented',
-      resource: 'reading_question_type_progress',
-      types: [],
-      message: 'Reading question-type analytics are not implemented yet.',
+      status: 'ready',
+      overallStats: {
+        completedSessions,
+        averageBandScore: avgBandScore,
+        bestBandScore: results[0]
+          ? Math.max(...results.map((item) => Number(item.bandScore)))
+          : null,
+      },
+      questionTypeProgress: progressRows.map((row) => ({
+        questionType: row.questionType,
+        attempts: row.attempts,
+        correct: row.correct,
+        accuracyRate: Number(row.accuracyRate ?? 0),
+        lastPracticedAt: row.lastPracticedAt,
+      })),
+      recentSessions: recentSessions.map((session) => ({
+        id: session.id,
+        completedAt: session.completedAt,
+        bandScore: session.results[0] ? Number(session.results[0].bandScore) : null,
+        rawScore: session.results[0]?.rawScore ?? null,
+        totalQuestions: session.results[0]?.totalQuestions ?? null,
+        passage: session.passages[0]?.passage ?? null,
+      })),
+      weakAreas,
+      recommendations: weakAreas.map((area) => `Spend another passage on ${this.humanizeQuestionType(area.questionType)}.`),
+    };
+  }
+
+  async getQuestionTypeProgress(userId: string) {
+    let progressRows;
+
+    try {
+      progressRows = await this.prisma.readingProgress.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+      });
+    } catch (error) {
+      return this.handleReadingStorageUnavailable('reading_question_type_progress', error, {
+        types: [],
+      });
+    }
+
+    return {
+      status: 'ready',
+      types: progressRows.map((row) => ({
+        questionType: row.questionType,
+        attempts: row.attempts,
+        correct: row.correct,
+        accuracyRate: Number(row.accuracyRate ?? 0),
+        lastPracticedAt: row.lastPracticedAt,
+      })),
     };
   }
 
@@ -279,5 +810,217 @@ export class ReadingService {
         'Reading storage is not available yet. Ensure the reading migration has been applied before using this endpoint.',
       error: message,
     };
+  }
+
+  private serializePassage(
+    passage: {
+      id: string;
+      title: string;
+      content: string;
+      wordCount: number;
+      difficultyLevel: string;
+      testType: string;
+      topicCategory: string;
+      sourceAttribution: string | null;
+      createdAt?: Date;
+      updatedAt?: Date;
+      paragraphs: Array<{ id: string; paragraphIndex: number; label: string; content: string }>;
+      questionSets: Array<{
+        id: string;
+        questionType: string;
+        instructions: string;
+        questionRangeStart: number;
+        questionRangeEnd: number;
+        setData: Prisma.JsonValue | null;
+        createdAt?: Date;
+        questions: ReadingQuestion[];
+      }>;
+    },
+  ) {
+    return {
+      id: passage.id,
+      title: passage.title,
+      content: passage.content,
+      wordCount: passage.wordCount,
+      difficultyLevel: passage.difficultyLevel,
+      testType: passage.testType,
+      topicCategory: passage.topicCategory,
+      sourceAttribution: passage.sourceAttribution,
+      createdAt: passage.createdAt,
+      updatedAt: passage.updatedAt,
+      paragraphs: passage.paragraphs,
+      questionSets: passage.questionSets.map((set) => ({
+        id: set.id,
+        questionType: set.questionType,
+        instructions: set.instructions,
+        questionRangeStart: set.questionRangeStart,
+        questionRangeEnd: set.questionRangeEnd,
+        setData: set.setData,
+        createdAt: set.createdAt,
+        questions: set.questions.map((question) => this.serializeQuestion(question)),
+      })),
+    };
+  }
+
+  private serializeQuestion(question: ReadingQuestion) {
+    return {
+      id: question.id,
+      questionSetId: question.questionSetId,
+      questionType: question.questionType,
+      questionNumber: question.questionNumber,
+      questionData: question.questionData,
+      explanation: question.explanation,
+      skillTested: question.skillTested,
+      createdAt: question.createdAt,
+    };
+  }
+
+  private evaluateAnswer(question: ReadingQuestion, answer: unknown) {
+    const normalizedInput = this.normalizeAnswerValue(answer);
+    const acceptedAnswers = this.extractAcceptedAnswers(question.correctAnswer);
+    const normalizedAccepted = acceptedAnswers.map((item) => this.normalizeAnswerValue(item));
+    const isCorrect = normalizedAccepted.includes(normalizedInput);
+
+    return {
+      isCorrect,
+      persistedAnswer: this.wrapAnswer(answer),
+      acceptedAnswers,
+    };
+  }
+
+  private wrapAnswer(answer: unknown): Prisma.JsonValue {
+    if (
+      answer === null ||
+      typeof answer === 'string' ||
+      typeof answer === 'number' ||
+      typeof answer === 'boolean'
+    ) {
+      return { value: answer };
+    }
+
+    if (Array.isArray(answer)) {
+      return { value: answer as Prisma.JsonArray };
+    }
+
+    if (typeof answer === 'object') {
+      return answer as Prisma.JsonObject;
+    }
+
+    return { value: String(answer) };
+  }
+
+  private extractAcceptedAnswers(correctAnswer: Prisma.JsonValue): string[] {
+    if (typeof correctAnswer === 'string') {
+      return [correctAnswer];
+    }
+
+    if (Array.isArray(correctAnswer)) {
+      return correctAnswer.map((item) => String(item));
+    }
+
+    if (correctAnswer && typeof correctAnswer === 'object') {
+      const objectValue = correctAnswer as Record<string, Prisma.JsonValue>;
+      if (typeof objectValue.answer === 'string') {
+        return [objectValue.answer];
+      }
+
+      if (Array.isArray(objectValue.answers)) {
+        return objectValue.answers.map((item) => String(item));
+      }
+    }
+
+    return [String(correctAnswer)];
+  }
+
+  private normalizeAnswerValue(value: unknown) {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const record = value as Record<string, unknown>;
+      if ('value' in record) {
+        return this.normalizeAnswerValue(record.value);
+      }
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeAnswerValue(item)).join('|');
+    }
+
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s/-]/g, '');
+  }
+
+  private convertRawScoreToBand(rawScore: number, totalQuestions: number) {
+    const percentage = totalQuestions === 0 ? 0 : rawScore / totalQuestions;
+    if (percentage >= 0.9) return new Prisma.Decimal(9.0);
+    if (percentage >= 0.82) return new Prisma.Decimal(8.0);
+    if (percentage >= 0.75) return new Prisma.Decimal(7.0);
+    if (percentage >= 0.68) return new Prisma.Decimal(6.5);
+    if (percentage >= 0.6) return new Prisma.Decimal(6.0);
+    if (percentage >= 0.5) return new Prisma.Decimal(5.5);
+    if (percentage >= 0.4) return new Prisma.Decimal(5.0);
+    if (percentage >= 0.3) return new Prisma.Decimal(4.5);
+    return new Prisma.Decimal(4.0);
+  }
+
+  private buildQuestionTypeBreakdown(questions: ReadingQuestion[], answers: Array<{ questionId: string; isCorrect: boolean }>) {
+    const answerMap = new Map(answers.map((answer) => [answer.questionId, answer.isCorrect]));
+
+    return questions.reduce<Record<string, { questionType: string; total: number; correct: number; accuracyRate: number }>>(
+      (acc, question) => {
+        const key = question.questionType;
+        const current = acc[key] ?? {
+          questionType: key,
+          total: 0,
+          correct: 0,
+          accuracyRate: 0,
+        };
+
+        current.total += 1;
+        if (answerMap.get(question.id)) {
+          current.correct += 1;
+        }
+
+        current.accuracyRate = Number(((current.correct / current.total) * 100).toFixed(2));
+        acc[key] = current;
+        return acc;
+      },
+      {},
+    );
+  }
+
+  private buildSkillBreakdown(questions: ReadingQuestion[], answers: Array<{ questionId: string; isCorrect: boolean }>) {
+    const answerMap = new Map(answers.map((answer) => [answer.questionId, answer.isCorrect]));
+
+    return questions.reduce<Record<string, { skill: string; total: number; correct: number; accuracyRate: number }>>(
+      (acc, question) => {
+        const key = question.skillTested || 'General comprehension';
+        const current = acc[key] ?? {
+          skill: key,
+          total: 0,
+          correct: 0,
+          accuracyRate: 0,
+        };
+
+        current.total += 1;
+        if (answerMap.get(question.id)) {
+          current.correct += 1;
+        }
+
+        current.accuracyRate = Number(((current.correct / current.total) * 100).toFixed(2));
+        acc[key] = current;
+        return acc;
+      },
+      {},
+    );
+  }
+
+  private humanizeQuestionType(questionType: string) {
+    return questionType.toLowerCase().split('_').join(' ');
   }
 }

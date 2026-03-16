@@ -1,9 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { User } from '@prisma/client';
 import { ReadingService } from './reading.service';
 import { StartReadingSessionDto } from './dto/start-reading-session.dto';
 import { SubmitReadingAnswerDto } from './dto/submit-reading-answer.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('reading')
+@UseGuards(JwtAuthGuard)
 export class ReadingController {
   constructor(private readonly readingService: ReadingService) {}
 
@@ -34,36 +38,42 @@ export class ReadingController {
     return this.readingService.getPassage(id);
   }
 
+  @Get('sessions/:sessionId')
+  getSession(@CurrentUser() user: User, @Param('sessionId') sessionId: string) {
+    return this.readingService.getSession(sessionId, user.id);
+  }
+
   @Post('sessions')
-  startSession(@Body() body: StartReadingSessionDto) {
-    return this.readingService.startSession(body);
+  startSession(@CurrentUser() user: User, @Body() body: StartReadingSessionDto) {
+    return this.readingService.startSession(user.id, body);
   }
 
   @Post('sessions/:sessionId/answers')
   submitAnswer(
+    @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
     @Body() body: SubmitReadingAnswerDto,
   ) {
-    return this.readingService.submitAnswer(sessionId, body);
+    return this.readingService.submitAnswer(sessionId, user.id, body);
   }
 
   @Post('sessions/:sessionId/complete')
-  completeSession(@Param('sessionId') sessionId: string) {
-    return this.readingService.completeSession(sessionId);
+  completeSession(@CurrentUser() user: User, @Param('sessionId') sessionId: string) {
+    return this.readingService.completeSession(sessionId, user.id);
   }
 
   @Get('sessions/:sessionId/results')
-  getResults(@Param('sessionId') sessionId: string) {
-    return this.readingService.getResults(sessionId);
+  getResults(@CurrentUser() user: User, @Param('sessionId') sessionId: string) {
+    return this.readingService.getResults(sessionId, user.id);
   }
 
   @Get('progress')
-  getProgress() {
-    return this.readingService.getProgress();
+  getProgress(@CurrentUser() user: User) {
+    return this.readingService.getProgress(user.id);
   }
 
   @Get('progress/question-types')
-  getQuestionTypeProgress() {
-    return this.readingService.getQuestionTypeProgress();
+  getQuestionTypeProgress(@CurrentUser() user: User) {
+    return this.readingService.getQuestionTypeProgress(user.id);
   }
 }
