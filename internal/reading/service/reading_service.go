@@ -236,3 +236,5 @@ func calculateBandScore(correct, total int) float64 {
 		return 3.0
 	}
 }
+
+// readingProgressUpdated
