@@ -71,7 +71,7 @@ export class SpeechAnalysisService {
       where: { key: 'active_speech_provider' },
     });
     
-    const provider = providerSetting?.value || 'deepgram';
+    const provider = providerSetting?.value || 'whisper';
     
     if (provider === 'deepgram' && this.deepgram) {
       try {

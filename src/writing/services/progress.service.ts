@@ -12,16 +12,11 @@ export class ProgressService {
    * Get overall writing progress for a user
    */
   async getProgress(userId: string) {
-    let progress = await this.prisma.writingProgress.findUnique({
+    const progress = await this.prisma.writingProgress.upsert({
       where: { userId },
+      create: { userId },
+      update: {},
     });
-
-    if (!progress) {
-      // Create initial progress record
-      progress = await this.prisma.writingProgress.create({
-        data: { userId },
-      });
-    }
 
     return progress;
   }
