@@ -55,6 +55,7 @@ model User {
   paymentTransactions PaymentTransaction[]
   readingSessions     ReadingSession[]
   readingProgress     ReadingProgress[]
+  readingAchievements ReadingAchievement[]
 
   @@map("users")
 }
@@ -658,6 +659,7 @@ model ReadingSession {
   startedAt        DateTime           @default(now()) @map("started_at")
   completedAt      DateTime?          @map("completed_at")
   timeSpentSeconds Int?               @map("time_spent_seconds")
+  practiceFilters  Json?              @map("practice_filters")
   createdAt        DateTime           @default(now()) @map("created_at")
 
   passages ReadingSessionPassage[]
@@ -709,6 +711,8 @@ model ReadingResult {
   questionTypeBreakdown Json?          @map("question_type_breakdown")
   skillBreakdown        Json?          @map("skill_breakdown")
   timeManagement        Json?          @map("time_management")
+  aiAnalysis            Json?          @map("ai_analysis")
+  completionReason      String?        @map("completion_reason")
   createdAt             DateTime       @default(now()) @map("created_at")
 
   @@index([sessionId])
@@ -730,4 +734,16 @@ model ReadingProgress {
   @@unique([userId, questionType])
   @@index([userId])
   @@map("reading_progress")
+}
+
+model ReadingAchievement {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("reading_achievements")
 }

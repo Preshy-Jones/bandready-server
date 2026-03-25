@@ -16,6 +16,7 @@
     "prisma:studio": "prisma studio",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts",
+    "db:seed:reading": "ts-node prisma/seed-reading.ts",
     "db:seed:demo": "ts-node prisma/demo-seed.ts",
     "otp:recover": "ts-node prisma/recover-unverified-users.ts",
     "postinstall": "prisma generate",

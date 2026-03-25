@@ -512,31 +512,249 @@ export class AdminService {
   }
 
   async createReadingPassage(data: Record<string, unknown>) {
-    return this.handleReadingUnavailable('create_reading_passage', null, {
-      accepted: false,
-      payload: data,
-      message:
-        'Reading passage creation is scaffolded but not implemented yet. Apply the migration and add write-path validation before enabling this in production.',
+    const {
+      title,
+      content,
+      testType,
+      difficultyLevel,
+      topicCategory,
+      sourceAttribution,
+      paragraphs,
+      questionSets,
+    } = data as {
+      title: string;
+      content: string;
+      testType: string;
+      difficultyLevel: string;
+      topicCategory: string;
+      sourceAttribution?: string;
+      paragraphs: Array<{ label: string; content: string }>;
+      questionSets: Array<{
+        questionType: string;
+        instructions: string;
+        setData?: any;
+        questions: Array<{
+          questionNumber: number;
+          questionData: any;
+          correctAnswer: any;
+          explanation?: string;
+          skillTested?: string;
+        }>;
+      }>;
+    };
+
+    const wordCount = content.split(/\s+/).filter(Boolean).length;
+
+    const passage = await this.prisma.$transaction(async (tx) => {
+      // 1. Create the passage
+      const created = await tx.readingPassage.create({
+        data: {
+          title,
+          content,
+          wordCount,
+          testType: testType as any,
+          difficultyLevel: difficultyLevel as any,
+          topicCategory,
+          sourceAttribution: sourceAttribution || null,
+          isActive: true,
+        },
+      });
+
+      // 2. Create paragraphs
+      if (paragraphs?.length) {
+        await tx.passageParagraph.createMany({
+          data: paragraphs.map((p, idx) => ({
+            passageId: created.id,
+            paragraphIndex: idx,
+            label: p.label,
+            content: p.content,
+          })),
+        });
+      }
+
+      // 3. Create question sets + questions
+      if (questionSets?.length) {
+        for (const qs of questionSets) {
+          const rangeStart = qs.questions[0]?.questionNumber ?? 0;
+          const rangeEnd = qs.questions[qs.questions.length - 1]?.questionNumber ?? 0;
+
+          const questionSet = await tx.readingQuestionSet.create({
+            data: {
+              passageId: created.id,
+              questionType: qs.questionType as any,
+              instructions: qs.instructions,
+              questionRangeStart: rangeStart,
+              questionRangeEnd: rangeEnd,
+              setData: qs.setData || undefined,
+            },
+          });
+
+          if (qs.questions?.length) {
+            await tx.readingQuestion.createMany({
+              data: qs.questions.map((q) => ({
+                passageId: created.id,
+                questionSetId: questionSet.id,
+                questionType: qs.questionType as any,
+                questionNumber: q.questionNumber,
+                questionData: q.questionData,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation || null,
+                skillTested: q.skillTested || null,
+              })),
+            });
+          }
+        }
+      }
+
+      return created;
     });
+
+    // Return the fully-loaded passage
+    return this.getReadingPassageDetail(passage.id);
   }
 
   async updateReadingPassage(id: string, data: Record<string, unknown>) {
-    return this.handleReadingUnavailable('update_reading_passage', null, {
-      accepted: false,
-      id,
-      payload: data,
-      message:
-        'Reading passage update is scaffolded but not implemented yet. Apply the migration and add write-path validation before enabling this in production.',
+    const {
+      title,
+      content,
+      testType,
+      difficultyLevel,
+      topicCategory,
+      sourceAttribution,
+      isActive,
+      paragraphs,
+      questionSets,
+    } = data as {
+      title?: string;
+      content?: string;
+      testType?: string;
+      difficultyLevel?: string;
+      topicCategory?: string;
+      sourceAttribution?: string;
+      isActive?: boolean;
+      paragraphs?: Array<{ label: string; content: string }>;
+      questionSets?: Array<{
+        questionType: string;
+        instructions: string;
+        setData?: any;
+        questions: Array<{
+          questionNumber: number;
+          questionData: any;
+          correctAnswer: any;
+          explanation?: string;
+          skillTested?: string;
+        }>;
+      }>;
+    };
+
+    // Make sure passage exists
+    const existing = await this.prisma.readingPassage.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Reading passage not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Build update payload for metadata fields
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      if (content !== undefined) {
+        updateData.content = content;
+        updateData.wordCount = content.split(/\s+/).filter(Boolean).length;
+      }
+      if (testType !== undefined) updateData.testType = testType;
+      if (difficultyLevel !== undefined) updateData.difficultyLevel = difficultyLevel;
+      if (topicCategory !== undefined) updateData.topicCategory = topicCategory;
+      if (sourceAttribution !== undefined) updateData.sourceAttribution = sourceAttribution;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      if (Object.keys(updateData).length > 0) {
+        await tx.readingPassage.update({ where: { id }, data: updateData });
+      }
+
+      // Replace paragraphs if provided
+      if (paragraphs) {
+        await tx.passageParagraph.deleteMany({ where: { passageId: id } });
+        await tx.passageParagraph.createMany({
+          data: paragraphs.map((p, idx) => ({
+            passageId: id,
+            paragraphIndex: idx,
+            label: p.label,
+            content: p.content,
+          })),
+        });
+      }
+
+      // Replace question sets and questions if provided
+      if (questionSets) {
+        await tx.readingQuestion.deleteMany({ where: { passageId: id } });
+        await tx.readingQuestionSet.deleteMany({ where: { passageId: id } });
+
+        for (const qs of questionSets) {
+          const rangeStart = qs.questions[0]?.questionNumber ?? 0;
+          const rangeEnd = qs.questions[qs.questions.length - 1]?.questionNumber ?? 0;
+
+          const questionSet = await tx.readingQuestionSet.create({
+            data: {
+              passageId: id,
+              questionType: qs.questionType as any,
+              instructions: qs.instructions,
+              questionRangeStart: rangeStart,
+              questionRangeEnd: rangeEnd,
+              setData: qs.setData || undefined,
+            },
+          });
+
+          if (qs.questions?.length) {
+            await tx.readingQuestion.createMany({
+              data: qs.questions.map((q) => ({
+                passageId: id,
+                questionSetId: questionSet.id,
+                questionType: qs.questionType as any,
+                questionNumber: q.questionNumber,
+                questionData: q.questionData,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation || null,
+                skillTested: q.skillTested || null,
+              })),
+            });
+          }
+        }
+      }
     });
+
+    return this.getReadingPassageDetail(id);
   }
 
   async deleteReadingPassage(id: string) {
-    return this.handleReadingUnavailable('delete_reading_passage', null, {
-      accepted: false,
-      id,
-      message:
-        'Reading passage deletion is scaffolded but not implemented yet. Apply the migration and add archive/delete rules before enabling this in production.',
+    const existing = await this.prisma.readingPassage.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Reading passage not found');
+    }
+
+    // Check for active sessions using this passage
+    // @ts-ignore - readingSessionPassage may not be generated yet
+    const activeSessions = await this.prisma.readingSessionPassage.count({
+      where: {
+        passageId: id,
+        session: { completedAt: null },
+      },
     });
+
+    if (activeSessions > 0) {
+      // Soft-delete: mark passage as inactive
+      await this.prisma.readingPassage.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      return {
+        status: 'soft_deleted',
+        message: `Passage deactivated (${activeSessions} active session(s) still reference it).`,
+      };
+    }
+
+    // Hard-delete: cascade handles related records
+    await this.prisma.readingPassage.delete({ where: { id } });
+    return { status: 'deleted', message: 'Passage permanently deleted.' };
   }
 
   // ─── Payments ───────────────────────────────────────────────

@@ -5,10 +5,12 @@ import {
   ReadingQuestionType,
   ReadingSessionMode,
   ReadingTestType,
+  ReadingDifficulty,
 } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { StartReadingSessionDto } from './dto/start-reading-session.dto';
 import { SubmitReadingAnswerDto } from './dto/submit-reading-answer.dto';
+import { evaluateReadingAnswer } from './validators/answer-validator';
 
 @Injectable()
 export class ReadingService {
@@ -17,8 +19,8 @@ export class ReadingService {
   getStatus() {
     return {
       module: 'reading',
-      status: 'scaffolded',
-      message: 'Reading module scaffolding is in place. Session, content, and scoring APIs are not implemented yet.',
+      status: 'ready',
+      message: 'Reading module is fully operational. Supports 11 question types, 4 practice modes, AI analysis, and adaptive difficulty.',
     };
   }
 
@@ -26,55 +28,61 @@ export class ReadingService {
     const normalized = this.normalizeCatalogFilters(filters);
 
     try {
-      const whereClauses = [Prisma.sql`"is_active" = true`];
+      const where: Prisma.ReadingPassageWhereInput = {
+        isActive: true,
+      };
 
       if (normalized.testType) {
-        whereClauses.push(Prisma.sql`"test_type" = ${normalized.testType}::"ReadingTestType"`);
+        where.testType = normalized.testType as ReadingTestType;
       }
 
       if (normalized.difficulty) {
-        whereClauses.push(
-          Prisma.sql`"difficulty_level" = ${normalized.difficulty}::"ReadingDifficulty"`,
-        );
+        where.difficultyLevel = normalized.difficulty as any;
       }
 
       if (normalized.topic) {
-        whereClauses.push(
-          Prisma.sql`LOWER("topic_category") LIKE ${`%${normalized.topic.toLowerCase()}%`}`,
-        );
+        where.topicCategory = {
+          contains: normalized.topic,
+          mode: 'insensitive',
+        };
       }
 
-      const whereSql = Prisma.join(whereClauses, ' AND ');
-
-      const passages = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
-        SELECT
-          "id",
-          "title",
-          "word_count" AS "wordCount",
-          "difficulty_level" AS "difficultyLevel",
-          "test_type" AS "testType",
-          "topic_category" AS "topicCategory",
-          "source_attribution" AS "sourceAttribution",
-          "created_at" AS "createdAt",
-          "updated_at" AS "updatedAt"
-        FROM "reading_passages"
-        WHERE ${whereSql}
-        ORDER BY "created_at" DESC
-        LIMIT ${normalized.limit}
-        OFFSET ${normalized.offset}
-      `);
-
-      const totalRows = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
-        SELECT COUNT(*)::bigint AS "count"
-        FROM "reading_passages"
-        WHERE ${whereSql}
-      `);
+      const [passages, total] = await Promise.all([
+        this.prisma.readingPassage.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: normalized.limit,
+          skip: normalized.offset,
+          select: {
+            id: true,
+            title: true,
+            wordCount: true,
+            difficultyLevel: true,
+            testType: true,
+            topicCategory: true,
+            sourceAttribution: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.readingPassage.count({ where }),
+      ]);
 
       return {
         status: 'ready',
         filters: normalized,
-        passages,
-        total: Number(totalRows[0]?.count || 0),
+        passages: passages.map((p) => ({
+          id: p.id,
+          title: p.title,
+          wordCount: p.wordCount,
+          difficultyLevel: p.difficultyLevel,
+          testType: p.testType,
+          topicCategory: p.topicCategory,
+          sourceAttribution: p.sourceAttribution,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        })),
+        total,
       };
     } catch (error) {
       return this.handleReadingStorageUnavailable('reading_passages', error, {
@@ -225,12 +233,31 @@ export class ReadingService {
         timeSpentSeconds: session.timeSpentSeconds,
         createdAt: session.createdAt,
       },
-      passages: session.passages.map((item) => ({
-        id: item.id,
-        passageOrder: item.passageOrder,
-        timeSpentSeconds: item.timeSpentSeconds,
-        passage: this.serializePassage(item.passage),
-      })),
+      passages: session.passages.map((item) => {
+        const serialized = this.serializePassage(item.passage);
+        const filters = (session as any).practiceFilters;
+
+        if (filters && typeof filters === 'object') {
+          if (filters.questionTypes) {
+            serialized.questionSets = serialized.questionSets.filter((qs: any) =>
+              filters.questionTypes.includes(qs.questionType),
+            );
+          } else if (filters.reviewQuestionIds) {
+            const reviewSet = new Set(filters.reviewQuestionIds);
+            serialized.questionSets.forEach((qs: any) => {
+              qs.questions = qs.questions.filter((q: any) => reviewSet.has(q.id));
+            });
+            serialized.questionSets = serialized.questionSets.filter((qs: any) => qs.questions.length > 0);
+          }
+        }
+
+        return {
+          id: item.id,
+          passageOrder: item.passageOrder,
+          timeSpentSeconds: item.timeSpentSeconds,
+          passage: serialized,
+        };
+      }),
       answers: session.answers.map((answer) => ({
         questionId: answer.questionId,
         answer: answer.userAnswer,
@@ -253,45 +280,103 @@ export class ReadingService {
   }
 
   async startSession(userId: string, payload: StartReadingSessionDto) {
-    if (payload.mode !== ReadingSessionMode.SINGLE_PASSAGE) {
-      throw new BadRequestException('Only SINGLE_PASSAGE reading sessions are implemented right now.');
-    }
+    let sessionPassages: Array<{ passageId: string; passageOrder: number }> = [];
+    let practiceFilters: any = null;
 
-    const where: Prisma.ReadingPassageWhereInput = {
-      isActive: true,
-      testType: payload.testType as ReadingTestType,
-    };
+    if (payload.mode === ReadingSessionMode.FULL_TEST) {
+      const availablePassages = await this.prisma.readingPassage.findMany({
+        where: { isActive: true, testType: payload.testType as ReadingTestType },
+        orderBy: { createdAt: 'desc' },
+      });
 
-    if (payload.passageId) {
-      where.id = payload.passageId;
-    }
+      const easy = availablePassages.find(p => p.difficultyLevel === 'EASY');
+      const med = availablePassages.find(p => p.difficultyLevel === 'MEDIUM');
+      const hard = availablePassages.find(p => p.difficultyLevel === 'HARD');
 
-    let passage;
+      const selected = [easy, med, hard].filter(Boolean) as any[];
+      if (selected.length < 3) {
+        for (const p of availablePassages) {
+          if (!selected.find(s => s.id === p.id) && selected.length < 3) {
+            selected.push(p);
+          }
+        }
+      }
 
-    try {
-      passage = await this.prisma.readingPassage.findFirst({
-        where,
-        include: {
-          paragraphs: { orderBy: { paragraphIndex: 'asc' } },
-          questionSets: {
-            orderBy: { questionRangeStart: 'asc' },
-            include: {
-              questions: { orderBy: { questionNumber: 'asc' } },
-            },
-          },
+      if (selected.length === 0) {
+        throw new NotFoundException('No reading passages available for a full test.');
+      }
+
+      selected.forEach((p, idx) => {
+        sessionPassages.push({ passageId: p.id, passageOrder: idx + 1 });
+      });
+
+      payload.isTimed = true; // Full tests are always timed (60 min handled frontend)
+
+    } else if (payload.mode === ReadingSessionMode.QUESTION_TYPE_PRACTICE) {
+      if (!payload.questionTypes || payload.questionTypes.length === 0) {
+        throw new BadRequestException('questionTypes is required for QUESTION_TYPE_PRACTICE mode.');
+      }
+
+      const sets = await this.prisma.readingQuestionSet.findMany({
+        where: {
+          questionType: { in: payload.questionTypes as ReadingQuestionType[] },
+          passage: { isActive: true, testType: payload.testType as ReadingTestType },
         },
+        take: 10,
+      });
+
+      if (sets.length === 0) {
+        throw new NotFoundException('No passages found covering these question types.');
+      }
+
+      // Pick the first passage that has a match
+      sessionPassages.push({ passageId: sets[0].passageId, passageOrder: 1 });
+      practiceFilters = { questionTypes: payload.questionTypes };
+
+    } else if (payload.mode === ReadingSessionMode.REVIEW) {
+      const incorrectAnswers = await this.prisma.readingAnswer.findMany({
+        where: { session: { userId }, isCorrect: false },
+        take: 40,
+        orderBy: { answeredAt: 'desc' },
+        include: { question: { select: { passageId: true } } },
+      });
+
+      if (incorrectAnswers.length === 0) {
+        throw new NotFoundException('No incorrect questions found to review. Great job!');
+      }
+
+      const uniquePassageIds = [...new Set(incorrectAnswers.map(ans => ans.question.passageId))].slice(0, 3);
+      uniquePassageIds.forEach((pid, idx) => {
+        sessionPassages.push({ passageId: pid, passageOrder: idx + 1 });
+      });
+
+      practiceFilters = { reviewQuestionIds: incorrectAnswers.map(a => a.questionId) };
+
+    } else if (payload.mode === ReadingSessionMode.SINGLE_PASSAGE) {
+      const where: Prisma.ReadingPassageWhereInput = {
+        isActive: true,
+        testType: payload.testType as ReadingTestType,
+      };
+
+      if (payload.passageId) {
+        where.id = payload.passageId;
+      }
+
+      const passage = await this.prisma.readingPassage.findFirst({
+        where,
         orderBy: payload.passageId ? undefined : { createdAt: 'desc' },
       });
-    } catch (error) {
-      return this.handleReadingStorageUnavailable('reading_session_start', error, { payload });
-    }
 
-    if (!passage) {
-      throw new NotFoundException('No reading passage is available for that configuration.');
+      if (!passage) {
+        throw new NotFoundException('No reading passage is available for that configuration.');
+      }
+      
+      sessionPassages.push({ passageId: passage.id, passageOrder: 1 });
+    } else {
+      throw new BadRequestException('Invalid session mode.');
     }
 
     let session;
-
     try {
       session = await this.prisma.readingSession.create({
         data: {
@@ -299,11 +384,9 @@ export class ReadingService {
           testType: payload.testType as ReadingTestType,
           mode: payload.mode as ReadingSessionMode,
           isTimed: payload.isTimed,
+          practiceFilters: practiceFilters || Prisma.JsonNull,
           passages: {
-            create: {
-              passageId: passage.id,
-              passageOrder: 1,
-            },
+            create: sessionPassages,
           },
         },
       });
@@ -320,7 +403,9 @@ export class ReadingService {
         isTimed: session.isTimed,
         startedAt: session.startedAt,
       },
-      passage: this.serializePassage(passage),
+      // Since FULL_TEST etc can have multiple passages, we just return the session ID. 
+      // The client redirects to /reading/practice/[id] which calls getSession() to get the full mapped passages.
+      passage: null, 
     };
   }
 
@@ -375,7 +460,11 @@ export class ReadingService {
       throw new NotFoundException('Reading question not found for this session.');
     }
 
-    const evaluation = this.evaluateAnswer(question, payload.answer);
+    const evaluation = evaluateReadingAnswer(
+      question.questionType,
+      payload.answer,
+      question.correctAnswer,
+    );
 
     let answer;
 
@@ -418,12 +507,13 @@ export class ReadingService {
       evaluation: {
         isCorrect: evaluation.isCorrect,
         acceptedAnswers: evaluation.acceptedAnswers,
+        details: evaluation.details,
         explanation: question.explanation,
       },
     };
   }
 
-  async completeSession(sessionId: string, userId: string) {
+  async completeSession(sessionId: string, userId: string, forceComplete?: boolean) {
     let session;
 
     try {
@@ -454,6 +544,16 @@ export class ReadingService {
       throw new ForbiddenException('You do not have access to this reading session.');
     }
 
+    if (session.completedAt) {
+      const existingResult = await this.prisma.readingResult.findFirst({
+        where: { sessionId },
+      });
+      return {
+        status: 'already_completed',
+        result: existingResult,
+      };
+    }
+
     const allQuestions = session.passages.flatMap((item) => item.passage.questions);
     if (allQuestions.length === 0) {
       throw new BadRequestException('This reading session has no questions to score.');
@@ -461,7 +561,7 @@ export class ReadingService {
 
     const rawScore = session.answers.filter((answer) => answer.isCorrect).length;
     const totalQuestions = allQuestions.length;
-    const bandScore = this.convertRawScoreToBand(rawScore, totalQuestions);
+    const bandScore = this.convertRawScoreToBand(rawScore, totalQuestions, session.testType);
     const questionTypeBreakdown = this.buildQuestionTypeBreakdown(allQuestions, session.answers);
     const skillBreakdown = this.buildSkillBreakdown(allQuestions, session.answers);
     const timeSpentSeconds =
@@ -490,8 +590,20 @@ export class ReadingService {
         const timeManagement = {
           isTimed: savedSession.isTimed,
           totalTimeSpentSeconds: timeSpentSeconds,
-          averageSecondsPerQuestion: Math.round(timeSpentSeconds / totalQuestions),
+          averageSecondsPerQuestion: Math.round(timeSpentSeconds / Math.max(1, totalQuestions)),
+          passages: session.passages.map((p) => {
+            const passageQuestionIds = p.passage.questions.map((q) => q.id);
+            const answered = session.answers.filter((a) => passageQuestionIds.includes(a.questionId)).length;
+            return {
+              passageOrder: p.passageOrder,
+              title: p.passage.title,
+              timeSpentSeconds: p.timeSpentSeconds || 0,
+              questionsAnswered: answered,
+            };
+          }),
         } as Prisma.InputJsonValue;
+
+        const completionReason = forceComplete ? 'timer_expired' : 'user_submitted';
 
         const savedResult = existingResult
           ? await tx.readingResult.update({
@@ -503,6 +615,7 @@ export class ReadingService {
                 questionTypeBreakdown: questionTypeBreakdown as Prisma.InputJsonValue,
                 skillBreakdown: skillBreakdown as Prisma.InputJsonValue,
                 timeManagement,
+                completionReason,
               },
             })
           : await tx.readingResult.create({
@@ -514,6 +627,7 @@ export class ReadingService {
                 questionTypeBreakdown: questionTypeBreakdown as Prisma.InputJsonValue,
                 skillBreakdown: skillBreakdown as Prisma.InputJsonValue,
                 timeManagement,
+                completionReason,
               },
             });
 
@@ -560,7 +674,7 @@ export class ReadingService {
       return this.handleReadingStorageUnavailable('reading_completion', error, { sessionId });
     }
 
-    return {
+    const response = {
       status: 'ready',
       result: {
         sessionId,
@@ -573,6 +687,11 @@ export class ReadingService {
         createdAt: result.createdAt,
       },
     };
+
+    // Fire-and-forget achievement check (don't block the response)
+    this.checkAndAwardAchievements(userId, Number(bandScore), session, questionTypeBreakdown, timeSpentSeconds).catch(() => {});
+
+    return response;
   }
 
   async getResults(sessionId: string, userId: string) {
@@ -751,6 +870,84 @@ export class ReadingService {
     };
   }
 
+  async getRecommendedPassage(userId: string) {
+    // Fetch user's exam type to filter passages accordingly
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { examType: true },
+    });
+    const testType: ReadingTestType =
+      user?.examType === 'GENERAL' ? 'GENERAL_TRAINING' : 'ACADEMIC';
+
+    const recentResults = await this.prisma.readingResult.findMany({
+      where: { session: { userId } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    let recommendedDifficulty: ReadingDifficulty = 'EASY';
+    let reason = "Let's start with an easy passage to build your confidence.";
+
+    if (recentResults.length > 0) {
+      const avgAccuracy = recentResults.reduce((sum, res) => sum + (res.rawScore / Math.max(1, res.totalQuestions)), 0) / recentResults.length;
+      
+      if (avgAccuracy >= 0.8) {
+        recommendedDifficulty = 'HARD';
+        reason = "You've been doing great recently! Here is a challenging passage to push your limits.";
+      } else if (avgAccuracy >= 0.6) {
+        recommendedDifficulty = 'MEDIUM';
+        reason = "Your recent scores are solid. Let's try a medium difficulty passage.";
+      } else {
+        recommendedDifficulty = 'EASY';
+        reason = "Let's focus on the fundamentals with an easier passage.";
+      }
+    }
+
+    const recentPassages = await this.prisma.readingSessionPassage.findMany({
+      where: {
+        session: {
+          userId,
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      },
+      select: { passageId: true },
+    });
+    
+    const excludedIds = recentPassages.map(rp => rp.passageId);
+
+    let recommendedPassage = await this.prisma.readingPassage.findFirst({
+      where: {
+        difficultyLevel: recommendedDifficulty,
+        testType,
+        isActive: true,
+        id: { notIn: excludedIds },
+      },
+      include: {
+        paragraphs: true,
+        questionSets: { include: { questions: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!recommendedPassage) {
+      recommendedPassage = await this.prisma.readingPassage.findFirst({
+        where: { testType, isActive: true },
+        include: {
+          paragraphs: true,
+          questionSets: { include: { questions: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    return {
+      status: 'ready',
+      difficulty: recommendedDifficulty,
+      reason,
+      passage: recommendedPassage ? this.serializePassage(recommendedPassage as any) : null,
+    };
+  }
+
   private normalizeCatalogFilters(filters: unknown) {
     const input = (filters ?? {}) as Record<string, unknown>;
 
@@ -863,7 +1060,7 @@ export class ReadingService {
   }
 
   private serializeQuestion(question: ReadingQuestion) {
-    return {
+    const serialized = {
       id: question.id,
       questionSetId: question.questionSetId,
       questionType: question.questionType,
@@ -873,99 +1070,37 @@ export class ReadingService {
       skillTested: question.skillTested,
       createdAt: question.createdAt,
     };
+    if ('correctAnswer' in serialized) {
+      delete (serialized as any).correctAnswer;
+    }
+    return serialized;
   }
 
-  private evaluateAnswer(question: ReadingQuestion, answer: unknown) {
-    const normalizedInput = this.normalizeAnswerValue(answer);
-    const acceptedAnswers = this.extractAcceptedAnswers(question.correctAnswer);
-    const normalizedAccepted = acceptedAnswers.map((item) => this.normalizeAnswerValue(item));
-    const isCorrect = normalizedAccepted.includes(normalizedInput);
+  private convertRawScoreToBand(rawScore: number, totalQuestions: number, testType: string = 'ACADEMIC') {
+    // Scale to /40 if not already (single-passage sessions have fewer questions)
+    const scaledScore = totalQuestions === 40
+      ? rawScore
+      : Math.round((rawScore / totalQuestions) * 40);
 
-    return {
-      isCorrect,
-      persistedAnswer: this.wrapAnswer(answer),
-      acceptedAnswers,
-    };
-  }
+    // Official IELTS Academic conversion table
+    const academicTable: [number, number][] = [
+      [39, 9.0], [37, 8.5], [35, 8.0], [33, 7.5], [30, 7.0],
+      [27, 6.5], [23, 6.0], [19, 5.5], [15, 5.0], [13, 4.5],
+      [10, 4.0], [6, 3.5], [4, 3.0], [0, 0],
+    ];
 
-  private wrapAnswer(answer: unknown): Prisma.JsonValue {
-    if (
-      answer === null ||
-      typeof answer === 'string' ||
-      typeof answer === 'number' ||
-      typeof answer === 'boolean'
-    ) {
-      return { value: answer };
+    // General Training has a different table
+    const gtTable: [number, number][] = [
+      [40, 9.0], [39, 8.5], [37, 8.0], [36, 7.5], [34, 7.0],
+      [32, 6.5], [30, 6.0], [27, 5.5], [23, 5.0], [19, 4.5],
+      [15, 4.0], [12, 3.5], [8, 3.0], [0, 0],
+    ];
+
+    const table = testType === 'GENERAL_TRAINING' ? gtTable : academicTable;
+    for (const [threshold, band] of table) {
+      if (scaledScore >= threshold) return new Prisma.Decimal(band);
     }
-
-    if (Array.isArray(answer)) {
-      return { value: answer as Prisma.JsonArray };
-    }
-
-    if (typeof answer === 'object') {
-      return answer as Prisma.JsonObject;
-    }
-
-    return { value: String(answer) };
-  }
-
-  private extractAcceptedAnswers(correctAnswer: Prisma.JsonValue): string[] {
-    if (typeof correctAnswer === 'string') {
-      return [correctAnswer];
-    }
-
-    if (Array.isArray(correctAnswer)) {
-      return correctAnswer.map((item) => String(item));
-    }
-
-    if (correctAnswer && typeof correctAnswer === 'object') {
-      const objectValue = correctAnswer as Record<string, Prisma.JsonValue>;
-      if (typeof objectValue.answer === 'string') {
-        return [objectValue.answer];
-      }
-
-      if (Array.isArray(objectValue.answers)) {
-        return objectValue.answers.map((item) => String(item));
-      }
-    }
-
-    return [String(correctAnswer)];
-  }
-
-  private normalizeAnswerValue(value: unknown) {
-    if (value === null || value === undefined) {
-      return '';
-    }
-
-    if (typeof value === 'object' && !Array.isArray(value)) {
-      const record = value as Record<string, unknown>;
-      if ('value' in record) {
-        return this.normalizeAnswerValue(record.value);
-      }
-    }
-
-    if (Array.isArray(value)) {
-      return value.map((item) => this.normalizeAnswerValue(item)).join('|');
-    }
-
-    return String(value)
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .replace(/[^\w\s/-]/g, '');
-  }
-
-  private convertRawScoreToBand(rawScore: number, totalQuestions: number) {
-    const percentage = totalQuestions === 0 ? 0 : rawScore / totalQuestions;
-    if (percentage >= 0.9) return new Prisma.Decimal(9.0);
-    if (percentage >= 0.82) return new Prisma.Decimal(8.0);
-    if (percentage >= 0.75) return new Prisma.Decimal(7.0);
-    if (percentage >= 0.68) return new Prisma.Decimal(6.5);
-    if (percentage >= 0.6) return new Prisma.Decimal(6.0);
-    if (percentage >= 0.5) return new Prisma.Decimal(5.5);
-    if (percentage >= 0.4) return new Prisma.Decimal(5.0);
-    if (percentage >= 0.3) return new Prisma.Decimal(4.5);
-    return new Prisma.Decimal(4.0);
+    return new Prisma.Decimal(0);
   }
 
   private buildQuestionTypeBreakdown(questions: ReadingQuestion[], answers: Array<{ questionId: string; isCorrect: boolean }>) {
@@ -1022,5 +1157,209 @@ export class ReadingService {
 
   private humanizeQuestionType(questionType: string) {
     return questionType.toLowerCase().split('_').join(' ');
+  }
+
+  // ─── Achievements ────────────────────────────────────────────────────
+
+  private static readonly ACHIEVEMENT_DEFINITIONS = [
+    {
+      id: 'first_reading',
+      name: 'First Steps',
+      description: 'Complete your first reading practice',
+      icon: '📖',
+    },
+    {
+      id: 'full_test_complete',
+      name: 'Test Ready',
+      description: 'Complete a full 40-question test',
+      icon: '📝',
+    },
+    {
+      id: 'band_7',
+      name: 'Band 7 Club',
+      description: 'Score Band 7.0 or higher',
+      icon: '🎯',
+    },
+    {
+      id: 'band_8',
+      name: 'Band 8 Elite',
+      description: 'Score Band 8.0 or higher',
+      icon: '🏆',
+    },
+    {
+      id: 'perfect_tfng',
+      name: 'Truth Seeker',
+      description: 'Get 100% on True/False/Not Given in one session',
+      icon: '✓',
+    },
+    {
+      id: 'speed_reader',
+      name: 'Speed Reader',
+      description: 'Complete a full test with 10+ minutes to spare',
+      icon: '⚡',
+    },
+    {
+      id: 'streak_7',
+      name: 'On Fire',
+      description: 'Practice reading 7 days in a row',
+      icon: '🔥',
+    },
+    {
+      id: 'all_types',
+      name: 'Versatile Reader',
+      description: 'Practice all 11 question types',
+      icon: '🌟',
+    },
+    {
+      id: 'ten_sessions',
+      name: 'Dedicated Reader',
+      description: 'Complete 10 reading sessions',
+      icon: '📚',
+    },
+  ];
+
+  private async checkAndAwardAchievements(
+    userId: string,
+    bandScore: number,
+    session: any,
+    questionTypeBreakdown: any,
+    timeSpentSeconds: number,
+  ) {
+    try {
+      // Get existing achievements to avoid duplicate checks
+      const existing = await this.prisma.readingAchievement.findMany({
+        where: { userId },
+        select: { achievementId: true },
+      });
+      const existingIds = new Set(existing.map((a: any) => a.achievementId));
+
+      const newAchievements: string[] = [];
+
+      // Count total completed sessions
+      const totalSessions = await this.prisma.readingSession.count({
+        where: { userId, completedAt: { not: null } },
+      });
+
+      // first_reading
+      if (!existingIds.has('first_reading') && totalSessions >= 1) {
+        newAchievements.push('first_reading');
+      }
+
+      // ten_sessions
+      if (!existingIds.has('ten_sessions') && totalSessions >= 10) {
+        newAchievements.push('ten_sessions');
+      }
+
+      // band_7
+      if (!existingIds.has('band_7') && bandScore >= 7.0) {
+        newAchievements.push('band_7');
+      }
+
+      // band_8
+      if (!existingIds.has('band_8') && bandScore >= 8.0) {
+        newAchievements.push('band_8');
+      }
+
+      // full_test_complete — 40 questions or session mode is FULL_TEST
+      if (!existingIds.has('full_test_complete')) {
+        const totalQs = session.answers?.length ?? 0;
+        if (totalQs >= 38 || session.mode === 'FULL_TEST') {
+          newAchievements.push('full_test_complete');
+        }
+      }
+
+      // perfect_tfng — 100% on TFNG in this session
+      if (!existingIds.has('perfect_tfng') && questionTypeBreakdown) {
+        const tfngBreakdown = Object.values(questionTypeBreakdown).find(
+          (b: any) => b.questionType === 'TRUE_FALSE_NOT_GIVEN',
+        ) as any;
+        if (tfngBreakdown && tfngBreakdown.total > 0 && tfngBreakdown.correct === tfngBreakdown.total) {
+          newAchievements.push('perfect_tfng');
+        }
+      }
+
+      // speed_reader — full test finished with 10+ min to spare (3600s total, so <3000s)
+      if (!existingIds.has('speed_reader')) {
+        const totalQs = session.answers?.length ?? 0;
+        if (totalQs >= 38 && timeSpentSeconds < 3000) {
+          newAchievements.push('speed_reader');
+        }
+      }
+
+      // all_types — check that user has attempted all 11 question types
+      if (!existingIds.has('all_types')) {
+        const typesAttempted = await this.prisma.readingProgress.count({
+          where: { userId, attempts: { gt: 0 } },
+        });
+        if (typesAttempted >= 11) {
+          newAchievements.push('all_types');
+        }
+      }
+
+      // streak_7 — check reading streak (unique days with completed sessions in a row)
+      if (!existingIds.has('streak_7')) {
+        const recentSessions = await this.prisma.readingSession.findMany({
+          where: { userId, completedAt: { not: null } },
+          select: { completedAt: true },
+          orderBy: { completedAt: 'desc' },
+          take: 30,
+        });
+
+        if (recentSessions.length >= 7) {
+          const uniqueDays = [...new Set(
+            recentSessions.map((s) => s.completedAt!.toISOString().split('T')[0]),
+          )].sort().reverse();
+
+          let streak = 1;
+          for (let i = 1; i < uniqueDays.length; i++) {
+            const prev = new Date(uniqueDays[i - 1]);
+            const curr = new Date(uniqueDays[i]);
+            const diffDays = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
+            if (diffDays === 1) {
+              streak++;
+            } else {
+              break;
+            }
+          }
+
+          if (streak >= 7) {
+            newAchievements.push('streak_7');
+          }
+        }
+      }
+
+      // Award new achievements
+      if (newAchievements.length > 0) {
+        await this.prisma.readingAchievement.createMany({
+          data: newAchievements.map((achievementId) => ({
+            userId,
+            achievementId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return newAchievements;
+    } catch {
+      // Silently fail — achievements are non-critical
+      return [];
+    }
+  }
+
+  async getUserAchievements(userId: string) {
+    const unlocked = await this.prisma.readingAchievement.findMany({
+      where: { userId },
+      orderBy: { unlockedAt: 'desc' },
+    });
+
+    const unlockedMap = new Map(
+      unlocked.map((a: any) => [a.achievementId, a.unlockedAt]),
+    );
+
+    return ReadingService.ACHIEVEMENT_DEFINITIONS.map((def) => ({
+      ...def,
+      unlocked: unlockedMap.has(def.id),
+      unlockedAt: unlockedMap.get(def.id) || null,
+    }));
   }
 }
