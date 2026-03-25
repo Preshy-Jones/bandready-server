@@ -170,7 +170,7 @@ export class MailService {
             <p>Log in to BandReady today and stay on track with your goals.</p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="https://bandready.com/dashboard" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+              <a href="https://bandready.app/dashboard" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
             </div>
             
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
@@ -232,7 +232,7 @@ export class MailService {
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="https://bandready.com/pricing" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">${ctaText}</a>
+              <a href="https://bandready.app/pricing" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">${ctaText}</a>
             </div>
 
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
