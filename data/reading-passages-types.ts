@@ -1,5 +1,10 @@
 // Shared types for reading passage seed data
 
+export interface VocabularyTerm {
+  term: string;
+  definition: string;
+}
+
 export interface ReadingPassageSeed {
   title: string;
   content: string;
@@ -10,6 +15,7 @@ export interface ReadingPassageSeed {
   sourceAttribution?: string;
   paragraphs: { label: string; content: string }[];
   questionSets: ReadingQuestionSetSeed[];
+  vocabularyTerms?: VocabularyTerm[];
 }
 
 export interface ReadingQuestionSetSeed {

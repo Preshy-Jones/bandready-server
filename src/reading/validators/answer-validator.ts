@@ -59,15 +59,12 @@ function evaluateMultipleChoice(
 
   // MC total is the number of correct options required
   const total = accepted.length;
-  // It's fully correct only if ALL required options are selected and NO extra incorrect options are selected
-  // But standard MC gives 1 mark per correct selection, assuming they are separate questions.
-  // In IELTS, usually separate questions (e.g., Q13, Q14), so each holds 1 mark.
-  // If it's a multi-select mapped to ONE question, then score is correctCount.
+  // IELTS marking: no partial credit — all correct options must be selected with no extras
   const isCorrect = correctCount === total && normUser.length === total;
 
   return {
     isCorrect,
-    score: correctCount,
+    score: isCorrect ? total : 0,
     total,
     persistedAnswer: wrapAnswer(userAnswer),
     acceptedAnswers: acceptedRaw,
@@ -308,18 +305,30 @@ function isSpellingVariation(userWord: string, correctWord: string): boolean {
     humour: 'humor',
     labour: 'labor',
     neighbour: 'neighbor',
+    honour: 'honor',
+    favourite: 'favorite',
     apologise: 'apologize',
     organise: 'organize',
     recognise: 'recognize',
     analyse: 'analyze',
+    specialise: 'specialize',
+    realise: 'realize',
+    mobilise: 'mobilize',
+    utilise: 'utilize',
+    practise: 'practice',
     travelling: 'traveling',
     cancelled: 'canceled',
     programme: 'program',
+    catalogue: 'catalog',
+    dialogue: 'dialog',
     theatre: 'theater',
     centre: 'center',
     defence: 'defense',
     licence: 'license',
     behaviour: 'behavior',
+    grey: 'gray',
+    aeroplane: 'airplane',
+    tyre: 'tire',
   };
 
   if (

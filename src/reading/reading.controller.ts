@@ -4,6 +4,7 @@ import { ReadingService } from './reading.service';
 import { ReadingAnalysisService } from './services/reading-analysis.service';
 import { StartReadingSessionDto } from './dto/start-reading-session.dto';
 import { SubmitReadingAnswerDto } from './dto/submit-reading-answer.dto';
+import { CompleteReadingSessionDto } from './dto/complete-reading-session.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -70,7 +71,7 @@ export class ReadingController {
   completeSession(
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
-    @Body() body: { forceComplete?: boolean }
+    @Body() body: CompleteReadingSessionDto,
   ) {
     return this.readingService.completeSession(sessionId, user.id, body?.forceComplete);
   }

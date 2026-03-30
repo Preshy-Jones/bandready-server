@@ -35,17 +35,35 @@ Location: Riverside Business Centre, London
 
 We require an organised and reliable Administrative Assistant to support the finance department. Duties include processing invoices, maintaining filing systems, scheduling appointments, and providing general administrative support to the finance team. Experience with accounting software such as Xero or QuickBooks is an advantage. Excellent attention to detail and good communication skills are required. This position is ideal for someone seeking a flexible working arrangement.
 
-To apply, send your CV to hr@greenfieldmarketing.co.uk by 4 April.`,
-    wordCount: 480,
+To apply, send your CV to hr@greenfieldmarketing.co.uk by 4 April.
+
+STAFF BENEFITS AND WELLBEING PROGRAMME
+
+Greenfield Marketing Solutions is pleased to offer all employees access to a comprehensive wellbeing programme. This includes a confidential Employee Assistance Programme (EAP) providing free counselling sessions, legal advice, and financial guidance. Staff may also take advantage of discounted gym membership through our partnership with FitLife Health Clubs. Cycle-to-work scheme vouchers are available through payroll — speak to HR for details. Additionally, all employees are entitled to one paid volunteering day per year, which can be used to support a charity or community project of their choice.
+
+PROFESSIONAL DEVELOPMENT OPPORTUNITIES
+
+The company is committed to supporting the professional growth of all team members. Each employee is allocated an annual training budget of £500, which can be used for courses, conferences, or professional certifications relevant to their role. Internal lunch-and-learn sessions are held on the last Wednesday of each month, covering topics from presentation skills to data analysis. Line managers are encouraged to discuss development goals during quarterly performance reviews. Employees who wish to pursue further education, such as part-time degrees or professional qualifications, may apply for additional funding through the Learning and Development team.`,
+    wordCount: 620,
     difficultyLevel: 'EASY',
     testType: 'GENERAL_TRAINING',
     topicCategory: 'Workplace',
     sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'premises', definition: 'A building or part of a building occupied by a business or organisation' },
+      { term: 'designated', definition: 'Officially assigned or appointed for a particular purpose' },
+      { term: 'proficiency', definition: 'A high degree of skill or competence in a particular area' },
+      { term: 'evacuation', definition: 'The process of moving people out of a building or area for safety reasons' },
+      { term: 'pro-rata', definition: 'Calculated in proportion to time worked or amount used' },
+      { term: 'confidential', definition: 'Intended to be kept secret or private' },
+    ],
     paragraphs: [
       { label: 'A', content: 'NOTICE TO ALL STAFF — OFFICE RELOCATION. Please be informed that Greenfield Marketing Solutions will be relocating from our current premises at 45 Park Lane to the new Riverside Business Centre at 120 Thames Street, effective Monday, 15 April. The new office offers significantly more space, improved meeting facilities, and an on-site café. Staff parking will be available in the underground car park, with spaces allocated on a first-come, first-served basis. Public transport access is excellent, with Riverside Station (Northern and District lines) located just a three-minute walk from the building. All employees are expected to report to the new address from 15 April. IT equipment will be moved by the facilities team over the weekend of 12–13 April, and employees should ensure that all personal items are packed into the boxes provided by Friday, 11 April. Any questions should be directed to the Office Manager, Sarah Mitchell, at ext. 204.' },
       { label: 'B', content: 'HEALTH AND SAFETY REMINDER. Following the recent fire drill, all staff are reminded of the emergency evacuation procedures. When the fire alarm sounds, leave the building immediately via the nearest marked exit. Do not use the lifts. Assemble at the designated meeting point in the rear car park. Department heads are responsible for conducting a headcount of their team members. Personal belongings should not be retrieved during an evacuation. The building\'s fire wardens are identified by their high-visibility vests and will direct you to the exits. A full list of fire wardens is posted on the notice board in the main corridor. If you discover a fire, activate the nearest alarm call point and call reception on ext. 100. Do not attempt to fight the fire unless you have been trained in the use of fire extinguishers.' },
       { label: 'C', content: 'JOB VACANCIES — Position: Digital Marketing Coordinator. Department: Online Campaigns. Salary: £28,000–£32,000 depending on experience. Hours: Full-time, Monday to Friday, 9:00 AM – 5:30 PM. Location: Riverside Business Centre, London. We are seeking an enthusiastic and detail-oriented Digital Marketing Coordinator to join our growing online campaigns team. The successful candidate will be responsible for managing social media accounts, creating content for email marketing campaigns, analysing website traffic data, and assisting with paid advertising strategies. A minimum of two years\' experience in digital marketing is required, along with proficiency in Google Analytics and at least one social media management platform. A degree in marketing, communications, or a related field is preferred but not essential. Strong writing skills and the ability to work to tight deadlines are essential. To apply, send your CV and a cover letter to recruitment@greenfieldmarketing.co.uk by 28 March.' },
       { label: 'D', content: 'Position: Administrative Assistant. Department: Finance. Salary: £22,000–£25,000. Hours: Part-time, Monday to Wednesday, 9:00 AM – 3:00 PM. Location: Riverside Business Centre, London. We require an organised and reliable Administrative Assistant to support the finance department. Duties include processing invoices, maintaining filing systems, scheduling appointments, and providing general administrative support to the finance team. Experience with accounting software such as Xero or QuickBooks is an advantage. Excellent attention to detail and good communication skills are required. This position is ideal for someone seeking a flexible working arrangement. To apply, send your CV to hr@greenfieldmarketing.co.uk by 4 April.' },
+      { label: 'E', content: 'STAFF BENEFITS AND WELLBEING PROGRAMME. Greenfield Marketing Solutions is pleased to offer all employees access to a comprehensive wellbeing programme. This includes a confidential Employee Assistance Programme (EAP) providing free counselling sessions, legal advice, and financial guidance. Staff may also take advantage of discounted gym membership through our partnership with FitLife Health Clubs. Cycle-to-work scheme vouchers are available through payroll — speak to HR for details. Additionally, all employees are entitled to one paid volunteering day per year, which can be used to support a charity or community project of their choice.' },
+      { label: 'F', content: 'PROFESSIONAL DEVELOPMENT OPPORTUNITIES. The company is committed to supporting the professional growth of all team members. Each employee is allocated an annual training budget of £500, which can be used for courses, conferences, or professional certifications relevant to their role. Internal lunch-and-learn sessions are held on the last Wednesday of each month, covering topics from presentation skills to data analysis. Line managers are encouraged to discuss development goals during quarterly performance reviews. Employees who wish to pursue further education, such as part-time degrees or professional qualifications, may apply for additional funding through the Learning and Development team.' },
     ],
     questionSets: [
       {
@@ -229,17 +247,35 @@ Community Film Night: First Friday of each month, 7:30 PM, Main Hall. Free for a
 
 Spring Fair: Saturday, 22 March, 11:00 AM–4:00 PM, Centre Grounds. Open to the public (no membership required). Features local craft stalls, food vendors, live music, and a children's bouncy castle. Entry: £2 for adults, free for children under 12. All proceeds go to the Oakwood Community Fund.
 
-First Aid Course: Saturday, 5 April, 9:00 AM–4:00 PM, Room 8. Open to members and non-members. Cost: £45 per person (includes certificate and manual). Led by St John Ambulance. Limited to 20 places — book via the centre's website.`,
-    wordCount: 420,
+First Aid Course: Saturday, 5 April, 9:00 AM–4:00 PM, Room 8. Open to members and non-members. Cost: £45 per person (includes certificate and manual). Led by St John Ambulance. Limited to 20 places — book via the centre's website.
+
+CENTRE FACILITIES AND ACCESSIBILITY
+
+Oakwood Community Centre is fully wheelchair accessible, with ramp access at both the main entrance and the side entrance on Elm Road. Accessible changing rooms and toilets are available on the ground floor. A hearing loop system is installed in the Main Hall and Room 8 for events and presentations. Guide dogs are welcome in all areas of the centre. If you have specific accessibility requirements, please contact our Accessibility Officer, David Clarke, at accessibility@oakwoodcc.org.uk or call 020 7946 0124. We are committed to ensuring all members of the community can enjoy our facilities and programmes.
+
+CAFÉ AND SOCIAL AREA
+
+The Oakwood Café, located on the ground floor near the main reception, is open Monday to Saturday from 8:00 AM to 6:00 PM and on Sundays from 9:00 AM to 4:00 PM. The café serves hot and cold drinks, light meals, sandwiches, and a selection of homemade cakes. A children's menu is available, and all dietary requirements can be accommodated with advance notice. Free Wi-Fi is available throughout the café and social area. The space is also available for private hire outside regular hours — contact reception for pricing and availability. A community noticeboard is located near the café entrance where members can advertise local services, events, and items for sale.`,
+    wordCount: 600,
     difficultyLevel: 'EASY',
     testType: 'GENERAL_TRAINING',
     topicCategory: 'Community',
     sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'complimentary', definition: 'Given free of charge as a courtesy or bonus' },
+      { term: 'tier', definition: 'A level or grade within a structured system of pricing or membership' },
+      { term: 'proceeds', definition: 'Money received from an event, sale, or fundraising activity' },
+      { term: 'accessible', definition: 'Designed to be usable by people with disabilities or special needs' },
+      { term: 'accommodated', definition: 'Provided with what is needed; adjusted to meet particular requirements' },
+      { term: 'designated', definition: 'Officially assigned or appointed for a specific purpose' },
+    ],
     paragraphs: [
       { label: 'A', content: 'Welcome to Oakwood Community Centre! We offer a range of facilities and activities for residents of all ages. Membership is available in three tiers: Standard Membership (£15/month), Family Membership (£35/month), and Senior Membership (£10/month). All memberships require a minimum commitment of three months. Cancellation must be made in writing at least 30 days before the next payment date.' },
       { label: 'B', content: 'Standard Membership (£15/month): Access to the fitness room, swimming pool, and one group class per week. Available to individuals aged 16 and over. Family Membership (£35/month): Includes Standard Membership benefits for up to two adults and three children (aged 5–15) from the same household. Children under 8 must be accompanied by an adult at all times. Senior Membership (£10/month): Available to individuals aged 65 and over. Includes all Standard Membership benefits plus a complimentary weekly coffee morning every Thursday at 10:00 AM.' },
       { label: 'C', content: 'A valid form of identification (passport, driving licence, or utility bill) is required upon registration. Membership cards must be presented upon entry to the centre. Lost cards can be replaced for a fee of £5. POOL RULES: The swimming pool is open daily from 6:30 AM to 9:00 PM. Lane swimming is available during all hours. Children under 12 must be supervised by an adult in the pool area. Diving is not permitted in the shallow end. All swimmers must shower before entering the pool. The pool will be closed for maintenance on the first Monday of each month.' },
       { label: 'D', content: 'UPCOMING EVENTS: Yoga for Beginners — Every Tuesday and Thursday, 6:00–7:00 PM, Studio 2. Children\'s Art Workshop — Saturdays, 10:00 AM–12:00 PM, Room 14. Community Film Night — First Friday of each month, 7:30 PM, Main Hall. Spring Fair — Saturday, 22 March, 11:00 AM–4:00 PM. First Aid Course — Saturday, 5 April, 9:00 AM–4:00 PM, Room 8.' },
+      { label: 'E', content: 'CENTRE FACILITIES AND ACCESSIBILITY. Oakwood Community Centre is fully wheelchair accessible, with ramp access at both the main entrance and the side entrance on Elm Road. Accessible changing rooms and toilets are available on the ground floor. A hearing loop system is installed in the Main Hall and Room 8 for events and presentations. Guide dogs are welcome in all areas of the centre. If you have specific accessibility requirements, please contact our Accessibility Officer, David Clarke, at accessibility@oakwoodcc.org.uk or call 020 7946 0124.' },
+      { label: 'F', content: 'CAFÉ AND SOCIAL AREA. The Oakwood Café, located on the ground floor near the main reception, is open Monday to Saturday from 8:00 AM to 6:00 PM and on Sundays from 9:00 AM to 4:00 PM. The café serves hot and cold drinks, light meals, sandwiches, and a selection of homemade cakes. A children\'s menu is available, and all dietary requirements can be accommodated with advance notice. Free Wi-Fi is available throughout the café and social area. The space is also available for private hire outside regular hours. A community noticeboard is located near the café entrance where members can advertise local services, events, and items for sale.' },
     ],
     questionSets: [
       {
@@ -421,12 +457,29 @@ Mobile phones should be switched to silent mode during working hours. Personal c
 
 DRESS CODE
 
-The company operates a business casual dress code. Smart jeans are acceptable, but ripped or faded jeans are not. T-shirts with logos or slogans are not considered appropriate workwear. On days when clients are visiting the office, employees may be asked to dress more formally. Department managers will provide advance notice of client visits. Employees in customer-facing roles should refer to the specific dress code guidelines issued by their department.`,
-    wordCount: 430,
+The company operates a business casual dress code. Smart jeans are acceptable, but ripped or faded jeans are not. T-shirts with logos or slogans are not considered appropriate workwear. On days when clients are visiting the office, employees may be asked to dress more formally. Department managers will provide advance notice of client visits. Employees in customer-facing roles should refer to the specific dress code guidelines issued by their department.
+
+REMOTE WORKING POLICY
+
+Employees may request to work remotely for up to two days per week, subject to approval by their line manager. Remote working arrangements must not negatively affect team collaboration or client service. Employees working from home are expected to be available during core hours (10:00 AM – 4:00 PM) and to attend all scheduled meetings via video conference. The company will provide a laptop and headset for remote working purposes. Employees are responsible for ensuring they have a suitable workspace and a reliable internet connection. Any equipment provided remains company property and must be returned upon termination of employment.
+
+GRIEVANCE PROCEDURE
+
+If an employee has a concern or complaint relating to their employment, they are encouraged to raise it informally with their line manager in the first instance. If the matter cannot be resolved informally, the employee may submit a formal grievance in writing to the HR department. The grievance will be investigated, and a hearing will be arranged within 10 working days. The employee has the right to be accompanied at the hearing by a colleague or trade union representative. A written outcome will be provided within five working days of the hearing. If the employee is not satisfied with the outcome, they may appeal in writing within seven working days, and the appeal will be heard by a senior manager who was not involved in the original decision.`,
+    wordCount: 610,
     difficultyLevel: 'MEDIUM',
     testType: 'GENERAL_TRAINING',
     topicCategory: 'Workplace',
     sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'entitlement', definition: 'The amount of something that a person has a right to receive' },
+      { term: 'probationary period', definition: 'A trial period at the start of employment during which performance is assessed' },
+      { term: 'forfeited', definition: 'Lost or given up as a penalty or because a condition was not met' },
+      { term: 'statutory', definition: 'Required or defined by law or regulation' },
+      { term: 'disciplinary action', definition: 'Formal steps taken by an employer to address misconduct or poor performance' },
+      { term: 'grievance', definition: 'A formal complaint raised by an employee about a workplace issue' },
+      { term: 'termination', definition: 'The ending of an employment contract or agreement' },
+    ],
     paragraphs: [
       { label: 'A', content: 'All full-time employees are entitled to 25 days of paid annual leave per calendar year, in addition to eight statutory bank holidays. Part-time employees receive a pro-rata entitlement based on their contracted hours. Annual leave accrues from the first day of employment at a rate of approximately 2.08 days per month. New employees may take annual leave during their probationary period, subject to manager approval.' },
       { label: 'B', content: 'Leave requests must be submitted through the HR portal at least two weeks in advance. Requests for periods of five or more consecutive days require approval from both the employee\'s line manager and the department head. The company reserves the right to refuse leave requests during peak business periods, which are defined as the last two weeks of each financial quarter. Unused annual leave may be carried forward to the following year, up to a maximum of five days. Any leave carried forward must be taken by 31 March of the following year or it will be forfeited.' },
@@ -436,6 +489,8 @@ The company operates a business casual dress code. Smart jeans are acceptable, b
       { label: 'F', content: 'The use of company email and internet resources for personal purposes is permitted during break times only. Employees are reminded that all company systems are monitored for security purposes. The downloading of unauthorised software or the accessing of inappropriate websites may result in disciplinary action, up to and including dismissal.' },
       { label: 'G', content: 'Mobile phones should be switched to silent mode during working hours. Personal calls should be limited to break times except in cases of genuine emergency. The use of personal mobile phones during meetings is not permitted.' },
       { label: 'H', content: 'The company operates a business casual dress code. Smart jeans are acceptable, but ripped or faded jeans are not. T-shirts with logos or slogans are not considered appropriate workwear. On days when clients are visiting the office, employees may be asked to dress more formally. Department managers will provide advance notice of client visits.' },
+      { label: 'I', content: 'Employees may request to work remotely for up to two days per week, subject to approval by their line manager. Remote working arrangements must not negatively affect team collaboration or client service. Employees working from home are expected to be available during core hours (10:00 AM – 4:00 PM) and to attend all scheduled meetings via video conference. The company will provide a laptop and headset for remote working purposes. Employees are responsible for ensuring they have a suitable workspace and a reliable internet connection. Any equipment provided remains company property and must be returned upon termination of employment.' },
+      { label: 'J', content: 'If an employee has a concern or complaint relating to their employment, they are encouraged to raise it informally with their line manager in the first instance. If the matter cannot be resolved informally, the employee may submit a formal grievance in writing to the HR department. The grievance will be investigated, and a hearing will be arranged within 10 working days. The employee has the right to be accompanied at the hearing by a colleague or trade union representative. A written outcome will be provided within five working days of the hearing. If the employee is not satisfied with the outcome, they may appeal in writing within seven working days.' },
     ],
     questionSets: [
       {
@@ -610,12 +665,28 @@ Step 2 — Formal Written Complaint: If the issue is not resolved satisfactorily
 
 Step 3 — Internal Review: If you are dissatisfied with the response to your formal complaint, you may request an internal review by a senior manager. This request must be made within 14 days of receiving the formal response. The review will be completed within 20 working days.
 
-Step 4 — External Mediation: If the matter remains unresolved after the internal review, you may refer your complaint to the Property Ombudsman, an independent dispute resolution service. Parkview Properties is a member of the Property Ombudsman scheme and is bound by its decisions. Contact details: www.tpos.co.uk or telephone 01onal 722 333 306.`,
-    wordCount: 440,
+Step 4 — External Mediation: If the matter remains unresolved after the internal review, you may refer your complaint to the Property Ombudsman, an independent dispute resolution service. Parkview Properties is a member of the Property Ombudsman scheme and is bound by its decisions. Contact details: www.tpos.co.uk or telephone 01onal 722 333 306.
+
+PETS AND ANIMALS
+
+Tenants must obtain written permission from the landlord before keeping any pets on the property. Permission, if granted, may be subject to additional conditions, including a supplementary pet deposit of up to two weeks' rent. Tenants with pets are responsible for any damage caused to the property, including carpets, doors, and garden areas. All pets must be kept under control and must not cause a nuisance to neighbouring properties. The landlord reserves the right to withdraw permission if complaints are received about noise, odour, or damage related to the animal. Assistance dogs, as defined under the Equality Act 2010, are permitted in all properties without the need for additional permission.
+
+END OF TENANCY
+
+At the end of the tenancy, tenants must leave the property in the same condition as at the start of the tenancy, allowing for reasonable wear and tear. A checkout inspection will be conducted by the landlord or their agent within three working days of the tenant vacating the property. Tenants are expected to return all keys, remove all personal belongings, and ensure the property is thoroughly cleaned. Any items left behind will be disposed of at the tenant's expense after a period of 14 days. Professional cleaning of carpets and curtains may be required if they are found to be in a significantly worse condition than recorded in the inventory. Forwarding addresses must be provided to the landlord for the return of the deposit and any correspondence.`,
+    wordCount: 620,
     difficultyLevel: 'MEDIUM',
     testType: 'GENERAL_TRAINING',
     topicCategory: 'Housing',
     sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'tenancy', definition: 'The legal right to occupy a property under a rental agreement' },
+      { term: 'deposit', definition: 'A sum of money paid in advance as security against potential damage or unpaid rent' },
+      { term: 'wear and tear', definition: 'The gradual damage or deterioration that occurs through normal everyday use' },
+      { term: 'mediation', definition: 'A process in which an independent third party helps resolve a dispute between two parties' },
+      { term: 'habitable', definition: 'Suitable and safe for people to live in' },
+      { term: 'supplementary', definition: 'Provided in addition to what is already present or available' },
+    ],
     paragraphs: [
       { label: 'A', content: 'This document outlines the key terms of your tenancy agreement with Parkview Properties Ltd. Please read all sections carefully and retain a copy for your records.' },
       { label: 'B', content: 'Rent Payment: Monthly rent is due on the first day of each calendar month. Payment should be made by bank transfer to the account details provided in your tenancy agreement. A late payment charge of £25 will be applied if rent is not received within five working days of the due date. Persistent late payment may result in proceedings to end the tenancy.' },
@@ -625,6 +696,8 @@ Step 4 — External Mediation: If the matter remains unresolved after the intern
       { label: 'F', content: 'Step 1 — Informal Resolution: In the first instance, contact your designated property manager by phone or email. Most issues can be resolved informally within five working days.' },
       { label: 'G', content: 'Step 2 — Formal Written Complaint: If the issue is not resolved satisfactorily, submit a formal complaint in writing to complaints@parkviewproperties.co.uk. Include your tenancy reference number, a clear description of the issue, and any supporting evidence. You will receive an acknowledgement within two working days and a full response within 15 working days.' },
       { label: 'H', content: 'Step 3 — Internal Review: If you are dissatisfied with the response to your formal complaint, you may request an internal review by a senior manager. This request must be made within 14 days of receiving the formal response. The review will be completed within 20 working days. Step 4 — External Mediation: If the matter remains unresolved after the internal review, you may refer your complaint to the Property Ombudsman.' },
+      { label: 'I', content: 'PETS AND ANIMALS. Tenants must obtain written permission from the landlord before keeping any pets on the property. Permission, if granted, may be subject to additional conditions, including a supplementary pet deposit of up to two weeks\' rent. Tenants with pets are responsible for any damage caused to the property, including carpets, doors, and garden areas. All pets must be kept under control and must not cause a nuisance to neighbouring properties. The landlord reserves the right to withdraw permission if complaints are received. Assistance dogs, as defined under the Equality Act 2010, are permitted in all properties without the need for additional permission.' },
+      { label: 'J', content: 'END OF TENANCY. At the end of the tenancy, tenants must leave the property in the same condition as at the start of the tenancy, allowing for reasonable wear and tear. A checkout inspection will be conducted by the landlord or their agent within three working days of the tenant vacating the property. Tenants are expected to return all keys, remove all personal belongings, and ensure the property is thoroughly cleaned. Any items left behind will be disposed of at the tenant\'s expense after a period of 14 days. Professional cleaning of carpets and curtains may be required if they are found to be in a significantly worse condition than recorded in the inventory. Forwarding addresses must be provided to the landlord for the return of the deposit and any correspondence.' },
     ],
     questionSets: [
       {
@@ -799,12 +872,24 @@ Dietary choices also play a role. The production of meat, particularly beef and 
 
 At a larger scale, governments and businesses have crucial roles to play. The Paris Agreement, signed by 196 countries in 2015, committed signatories to limiting global warming to well below 2 degrees Celsius above pre-industrial levels, with efforts to limit the increase to 1.5 degrees. Achieving this goal requires rapid decarbonisation of energy systems, investment in renewable technology, protection of forests and natural carbon sinks, and fundamental changes to industrial processes and transportation systems.
 
-The transition to a low-carbon economy presents both challenges and opportunities. While some industries will decline, new sectors such as renewable energy, electric transport, and green building are creating millions of jobs worldwide. Economists argue that the cost of inaction on climate change far exceeds the cost of transition, making decisive action not only an environmental imperative but an economic one as well.`,
-    wordCount: 555,
+The transition to a low-carbon economy presents both challenges and opportunities. While some industries will decline, new sectors such as renewable energy, electric transport, and green building are creating millions of jobs worldwide. Economists argue that the cost of inaction on climate change far exceeds the cost of transition, making decisive action not only an environmental imperative but an economic one as well.
+
+Water resources are also under significant threat from climate change. Rising temperatures increase evaporation rates, leading to more frequent and prolonged droughts in arid and semi-arid regions. At the same time, warmer air holds more moisture, resulting in heavier rainfall and more severe flooding in other parts of the world. Glaciers and snowpacks, which serve as vital freshwater reservoirs for billions of people, are shrinking at an accelerating rate. The Intergovernmental Panel on Climate Change has projected that by 2050, an additional 1.8 billion people could be living in areas with absolute water scarcity. Competition for diminishing water supplies has the potential to intensify existing geopolitical tensions and create new conflicts, particularly in regions where rivers and aquifers cross national boundaries.
+
+Education and public awareness are essential components of the response to climate change. Studies consistently show that individuals who understand the science behind climate change are more likely to support mitigation policies and adopt sustainable behaviours. Schools in many countries have begun integrating climate literacy into their curricula, teaching students not only about the causes and effects of climate change but also about practical solutions. Community organisations and local governments play an equally important role by organising workshops, campaigns, and neighbourhood initiatives that empower citizens to take collective action. The challenge lies not merely in understanding the problem but in fostering a sense of shared responsibility and urgency that translates into meaningful change at every level of society.`,
+    wordCount: 750,
     difficultyLevel: 'HARD',
     testType: 'GENERAL_TRAINING',
     topicCategory: 'Environment',
     sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'greenhouse gases', definition: 'Gases in the atmosphere that trap heat from the sun, causing the planet to warm' },
+      { term: 'carbon footprint', definition: 'The total amount of greenhouse gases produced directly and indirectly by a person, organisation, or product' },
+      { term: 'decarbonisation', definition: 'The process of reducing carbon dioxide emissions from energy production and industrial processes' },
+      { term: 'subsistence farming', definition: 'Farming that provides enough food for the farmer and their family but not enough to sell commercially' },
+      { term: 'carbon sinks', definition: 'Natural systems such as forests and oceans that absorb more carbon dioxide than they release' },
+      { term: 'Paris Agreement', definition: 'A 2015 international treaty on climate change committing nations to limit global warming' },
+    ],
     paragraphs: [
       { label: 'A', content: 'Climate change refers to long-term shifts in global temperatures and weather patterns. While natural factors such as volcanic eruptions and variations in solar activity have influenced the Earth\'s climate throughout its history, the term is now primarily used to describe changes caused by human activities, particularly the burning of fossil fuels such as coal, oil, and natural gas. These activities release greenhouse gases, primarily carbon dioxide and methane, into the atmosphere, where they trap heat from the sun and cause the planet\'s average temperature to rise.' },
       { label: 'B', content: 'Since the late nineteenth century, the Earth\'s average surface temperature has risen by approximately 1.1 degrees Celsius, with most of this warming occurring in the past 50 years. While this may seem like a small change, it has had far-reaching consequences for weather patterns, sea levels, and ecosystems around the world. The decade from 2011 to 2020 was the warmest on record, and global temperatures continue to rise.' },

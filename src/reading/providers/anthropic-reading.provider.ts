@@ -21,10 +21,12 @@ export class AnthropicReadingProvider implements IReadingAnalysisProvider {
     try {
       // Find the first JSON block or the entire text if it looks like JSON
       const content = response.content[0].type === 'text' ? response.content[0].text : '';
-      const jsonStr = content.substring(
-        content.indexOf('{'),
-        content.lastIndexOf('}') + 1
-      );
+      const openIdx = content.indexOf('{');
+      const closeIdx = content.lastIndexOf('}');
+      if (openIdx === -1 || closeIdx === -1 || openIdx >= closeIdx) {
+        throw new Error('AI response did not contain valid JSON');
+      }
+      const jsonStr = content.substring(openIdx, closeIdx + 1);
       return JSON.parse(jsonStr) as ReadingAnalysisResponse;
     } catch (error) {
       throw new Error(`Failed to parse Anthropic API response: ${error instanceof Error ? error.message : String(error)}`);

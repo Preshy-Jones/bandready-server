@@ -105,6 +105,7 @@ export class ReadingService {
           "test_type" AS "testType",
           "topic_category" AS "topicCategory",
           "source_attribution" AS "sourceAttribution",
+          "vocabulary_terms" AS "vocabularyTerms",
           "created_at" AS "createdAt",
           "updated_at" AS "updatedAt"
         FROM "reading_passages"
@@ -115,11 +116,7 @@ export class ReadingService {
       const passage = passages[0];
 
       if (!passage) {
-        return {
-          status: 'not_found',
-          id,
-          message: 'Reading passage not found.',
-        };
+        throw new NotFoundException('Reading passage not found');
       }
 
       const paragraphs = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
@@ -289,9 +286,11 @@ export class ReadingService {
         orderBy: { createdAt: 'desc' },
       });
 
-      const easy = availablePassages.find(p => p.difficultyLevel === 'EASY');
-      const med = availablePassages.find(p => p.difficultyLevel === 'MEDIUM');
-      const hard = availablePassages.find(p => p.difficultyLevel === 'HARD');
+      // Shuffle to avoid always picking the same passages
+      const shuffled = [...availablePassages].sort(() => Math.random() - 0.5);
+      const easy = shuffled.find(p => p.difficultyLevel === 'EASY');
+      const med = shuffled.find(p => p.difficultyLevel === 'MEDIUM');
+      const hard = shuffled.find(p => p.difficultyLevel === 'HARD');
 
       const selected = [easy, med, hard].filter(Boolean) as any[];
       if (selected.length < 3) {
@@ -1019,6 +1018,7 @@ export class ReadingService {
       testType: string;
       topicCategory: string;
       sourceAttribution: string | null;
+      vocabularyTerms?: Prisma.JsonValue | null;
       createdAt?: Date;
       updatedAt?: Date;
       paragraphs: Array<{ id: string; paragraphIndex: number; label: string; content: string }>;
@@ -1043,6 +1043,7 @@ export class ReadingService {
       testType: passage.testType,
       topicCategory: passage.topicCategory,
       sourceAttribution: passage.sourceAttribution,
+      vocabularyTerms: passage.vocabularyTerms ?? null,
       createdAt: passage.createdAt,
       updatedAt: passage.updatedAt,
       paragraphs: passage.paragraphs,
@@ -1312,9 +1313,9 @@ export class ReadingService {
 
           let streak = 1;
           for (let i = 1; i < uniqueDays.length; i++) {
-            const prev = new Date(uniqueDays[i - 1]);
-            const curr = new Date(uniqueDays[i]);
-            const diffDays = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
+            const prev = new Date(uniqueDays[i - 1] + 'T00:00:00');
+            const curr = new Date(uniqueDays[i] + 'T00:00:00');
+            const diffDays = Math.round((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
             if (diffDays === 1) {
               streak++;
             } else {

@@ -1,4 +1,4 @@
-import { IsDefined, IsOptional, IsString } from 'class-validator';
+import { IsDefined, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class SubmitReadingAnswerDto {
   @IsString()
@@ -8,5 +8,7 @@ export class SubmitReadingAnswerDto {
   answer!: unknown;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
   timeSpentSeconds?: number;
 }

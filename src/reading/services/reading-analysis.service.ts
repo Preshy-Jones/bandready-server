@@ -53,8 +53,8 @@ export class ReadingAnalysisService {
         questionNumber: ans.question.questionNumber,
         questionType: ans.question.questionType,
         questionText: (ans.question.questionData as any).prompt || '',
-        userAnswer: ans.userAnswer ? String(ans.userAnswer) : '',
-        correctAnswer: ans.question.correctAnswer ? String(ans.question.correctAnswer) : '',
+        userAnswer: stringifyAnswer(ans.userAnswer),
+        correctAnswer: stringifyAnswer(ans.question.correctAnswer),
         skillTested: ans.question.skillTested || 'General',
         explanation: ans.question.explanation || '',
       }));
@@ -83,4 +83,11 @@ export class ReadingAnalysisService {
 
     return analysis;
   }
+}
+
+function stringifyAnswer(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && 'value' in (val as any)) return String((val as any).value);
+  return JSON.stringify(val);
 }

@@ -582,6 +582,7 @@ model ReadingPassage {
   testType          ReadingTestType   @map("test_type")
   topicCategory     String            @map("topic_category") @db.VarChar(100)
   sourceAttribution String?           @map("source_attribution") @db.Text
+  vocabularyTerms   Json?             @map("vocabulary_terms")
   isActive          Boolean           @default(true) @map("is_active")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
