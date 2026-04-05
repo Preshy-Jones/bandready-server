@@ -53,6 +53,7 @@ model User {
   drillAttempts       DrillAttempt[]
   writingProgress     WritingProgress?
   paymentTransactions PaymentTransaction[]
+  drillReviewQueues   DrillReviewQueue[]
 
   @@map("users")
 }
@@ -425,12 +426,14 @@ model WritingDrill {
   difficulty Difficulty @default(MEDIUM)
   timeLimit  Int?       @map("time_limit") // Seconds, null = no limit
 
-  relatedWeaknesses String[] @map("related_weaknesses") // Array of specificError values this drill addresses
+  relatedWeaknesses String[] @map("related_weaknesses") // Array of specific skill/error names
 
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  attempts DrillAttempt[]
+  attempts      DrillAttempt[]
+  reviewQueues  DrillReviewQueue[]
 
   @@index([type, category, difficulty])
   @@map("writing_drills")
@@ -464,6 +467,26 @@ model DrillAttempt {
   @@index([userId, drillId])
   @@index([userId, attemptedAt(sort: Desc)])
   @@map("drill_attempts")
+}
+
+model DrillReviewQueue {
+  id      String       @id @default(uuid())
+  userId  String       @map("user_id")
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drillId String       @map("drill_id")
+  drill   WritingDrill @relation(fields: [drillId], references: [id], onDelete: Cascade)
+
+  nextReviewAt  DateTime @map("next_review_at")
+  intervalDays  Float    @default(1.0) @map("interval_days")
+  easeFactor    Float    @default(2.5) @map("ease_factor")
+  consecutiveCorrect Int @default(0) @map("consecutive_correct")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, drillId])
+  @@index([userId, nextReviewAt])
+  @@map("drill_review_queue")
 }
 
 // =============================================

@@ -48,6 +48,7 @@ export class MailService {
             <p style="color: #64748B; font-size: 14px;">This link will expire in 1 hour.</p>
             <p style="color: #64748B; font-size: 14px;">If you did not request this, you can safely ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
             <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
           </div>
         `,
@@ -98,6 +99,7 @@ export class MailService {
             <p style="color: #64748B; font-size: 14px;">If you already left the verification page, just log in again and we will send you a fresh code.</p>
             <p>If you didn't request this, you can safely ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
             <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
           </div>
         `,
@@ -174,6 +176,7 @@ export class MailService {
             </div>
             
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
             <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
           </div>
         `,
@@ -236,6 +239,7 @@ export class MailService {
             </div>
 
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
             <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
           </div>
         `,
@@ -273,6 +277,7 @@ export class MailService {
             <p>We'll notify you as soon as early access opens.</p>
 
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
             <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
           </div>
         `,

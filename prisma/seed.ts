@@ -1,167 +1,13 @@
-import { Prisma, PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { task1Questions } from '../data/task1-questions';
 import { task2Questions } from '../data/task2-questions';
 import { grammarDrills } from '../data/grammar-drills';
 import { vocabularyDrills } from '../data/vocabulary-drills';
 import { coherenceDrills } from '../data/coherence-drills';
+import { taskResponseDrills } from '../data/task-response-drills';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
-
-const readingSeedPassage = {
-  id: 'reading-passsage-urban-farms',
-  title: 'Urban Farming Finds New Ground',
-  content: `A. In many large cities, empty rooftops and abandoned lots are being turned into productive gardens. Urban farming projects have grown quickly because they shorten food supply chains and give residents direct access to fresh produce. Supporters also argue that these projects make neighbourhoods greener and create stronger local communities.
-
-B. However, city farming is not simply a romantic return to nature. Setting up a productive site requires careful planning, reliable water access, and technical knowledge. Some projects fail because organisers underestimate costs or choose crops that do not suit the local climate. Successful farms tend to begin on a small scale and expand only after proving that demand is stable.
-
-C. Researchers have found that the educational impact of urban farms may be just as important as the vegetables they produce. Schools often use them to teach science, nutrition, and environmental responsibility. In some programmes, students track plant growth, compare soil quality, and learn how waste can be turned into compost.
-
-D. Even so, urban farming will not replace conventional agriculture. Large farms still provide most staple foods and can operate more efficiently for crops such as wheat or rice. Urban farms work best as a complement to the existing food system, especially when they focus on highly perishable items like herbs, lettuce, and tomatoes.`,
-  wordCount: 278,
-  difficultyLevel: 'MEDIUM' as const,
-  testType: 'ACADEMIC' as const,
-  topicCategory: 'Environment',
-  sourceAttribution: 'BandReady internal starter reading passage',
-  paragraphs: [
-    {
-      id: 'reading-paragraph-a',
-      paragraphIndex: 1,
-      label: 'A',
-      content:
-        'In many large cities, empty rooftops and abandoned lots are being turned into productive gardens. Urban farming projects have grown quickly because they shorten food supply chains and give residents direct access to fresh produce. Supporters also argue that these projects make neighbourhoods greener and create stronger local communities.',
-    },
-    {
-      id: 'reading-paragraph-b',
-      paragraphIndex: 2,
-      label: 'B',
-      content:
-        'However, city farming is not simply a romantic return to nature. Setting up a productive site requires careful planning, reliable water access, and technical knowledge. Some projects fail because organisers underestimate costs or choose crops that do not suit the local climate. Successful farms tend to begin on a small scale and expand only after proving that demand is stable.',
-    },
-    {
-      id: 'reading-paragraph-c',
-      paragraphIndex: 3,
-      label: 'C',
-      content:
-        'Researchers have found that the educational impact of urban farms may be just as important as the vegetables they produce. Schools often use them to teach science, nutrition, and environmental responsibility. In some programmes, students track plant growth, compare soil quality, and learn how waste can be turned into compost.',
-    },
-    {
-      id: 'reading-paragraph-d',
-      paragraphIndex: 4,
-      label: 'D',
-      content:
-        'Even so, urban farming will not replace conventional agriculture. Large farms still provide most staple foods and can operate more efficiently for crops such as wheat or rice. Urban farms work best as a complement to the existing food system, especially when they focus on highly perishable items like herbs, lettuce, and tomatoes.',
-    },
-  ],
-  questionSets: [
-    {
-      id: 'reading-qset-urban-farms-1',
-      questionType: 'TRUE_FALSE_NOT_GIVEN' as const,
-      instructions: 'Do the following statements agree with the information given in the reading passage?',
-      questionRangeStart: 1,
-      questionRangeEnd: 2,
-      setData: { options: ['TRUE', 'FALSE', 'NOT GIVEN'] },
-      questions: [
-        {
-          id: 'reading-question-1',
-          questionType: 'TRUE_FALSE_NOT_GIVEN' as const,
-          questionNumber: 1,
-          questionData: {
-            prompt: 'Urban farming projects can reduce the distance food travels before reaching consumers.',
-          },
-          correctAnswer: { answer: 'TRUE' },
-          explanation:
-            'Paragraph A states that urban farms shorten food supply chains and give residents direct access to fresh produce.',
-          skillTested: 'Identifying stated facts',
-        },
-        {
-          id: 'reading-question-2',
-          questionType: 'TRUE_FALSE_NOT_GIVEN' as const,
-          questionNumber: 2,
-          questionData: {
-            prompt: 'Most urban farming projects are successful from the beginning because demand is guaranteed.',
-          },
-          correctAnswer: { answer: 'FALSE' },
-          explanation:
-            'Paragraph B says some projects fail and that successful farms expand only after proving demand is stable.',
-          skillTested: 'Distinguishing fact from contradiction',
-        },
-      ],
-    },
-    {
-      id: 'reading-qset-urban-farms-2',
-      questionType: 'MULTIPLE_CHOICE' as const,
-      instructions: 'Choose the correct letter, A, B, C, or D.',
-      questionRangeStart: 3,
-      questionRangeEnd: 3,
-      setData: null,
-      questions: [
-        {
-          id: 'reading-question-3',
-          questionType: 'MULTIPLE_CHOICE' as const,
-          questionNumber: 3,
-          questionData: {
-            prompt: 'According to the passage, what is an important reason some city farms fail?',
-            options: [
-              { label: 'A', text: 'They focus too much on education.' },
-              { label: 'B', text: 'They lack strong community support.' },
-              { label: 'C', text: 'They are planned without enough practical preparation.' },
-              { label: 'D', text: 'They try to replace large-scale agriculture.' },
-            ],
-          },
-          correctAnswer: { answer: 'C' },
-          explanation:
-            'Paragraph B explains that some projects fail because organisers underestimate costs or choose unsuitable crops.',
-          skillTested: 'Understanding detailed meaning',
-        },
-      ],
-    },
-    {
-      id: 'reading-qset-urban-farms-3',
-      questionType: 'SENTENCE_COMPLETION' as const,
-      instructions: 'Complete the sentence below. Write NO MORE THAN TWO WORDS from the passage.',
-      questionRangeStart: 4,
-      questionRangeEnd: 4,
-      setData: { wordLimit: 2 },
-      questions: [
-        {
-          id: 'reading-question-4',
-          questionType: 'SENTENCE_COMPLETION' as const,
-          questionNumber: 4,
-          questionData: {
-            prompt: 'In some school programmes, organic waste is converted into ______.',
-          },
-          correctAnswer: { answers: ['compost'] },
-          explanation:
-            'Paragraph C says students learn how waste can be turned into compost.',
-          skillTested: 'Locating specific information',
-        },
-      ],
-    },
-    {
-      id: 'reading-qset-urban-farms-4',
-      questionType: 'SHORT_ANSWER' as const,
-      instructions: 'Answer the question below using NO MORE THAN THREE WORDS.',
-      questionRangeStart: 5,
-      questionRangeEnd: 5,
-      setData: { wordLimit: 3 },
-      questions: [
-        {
-          id: 'reading-question-5',
-          questionType: 'SHORT_ANSWER' as const,
-          questionNumber: 5,
-          questionData: {
-            prompt: 'Which type of food do large farms still provide most of?',
-          },
-          correctAnswer: { answers: ['staple foods', 'most staple foods'] },
-          explanation:
-            'Paragraph D states that large farms still provide most staple foods.',
-          skillTested: 'Finding specific factual detail',
-        },
-      ],
-    },
-  ],
-};
 
 // Official IELTS Speaking Questions sourced from Cambridge IELTS, British Council, and IELTS.org
 // These are authentic question types used in the IELTS Speaking Test
@@ -625,7 +471,12 @@ async function main() {
   });
   console.log(`✅ Created ${writingQuestions.length} writing questions`);
 
-  const writingDrills = [...grammarDrills, ...vocabularyDrills, ...coherenceDrills];
+  const writingDrills = [
+    ...grammarDrills,
+    ...vocabularyDrills,
+    ...coherenceDrills,
+    ...taskResponseDrills,
+  ];
   await prisma.writingDrill.createMany({
     data: writingDrills.map((d) => ({
       id: d.id,
@@ -644,65 +495,7 @@ async function main() {
   });
   console.log(`✅ Created ${writingDrills.length} writing drills`);
 
-  // =========================
-  // READING SEED
-  // =========================
-  console.log('🌱 Seeding reading module data...');
 
-  await prisma.readingAnswer.deleteMany();
-  await prisma.readingResult.deleteMany();
-  await prisma.readingSessionPassage.deleteMany();
-  await prisma.readingSession.deleteMany();
-  await prisma.readingProgress.deleteMany();
-  await prisma.readingQuestion.deleteMany();
-  await prisma.readingQuestionSet.deleteMany();
-  await prisma.passageParagraph.deleteMany();
-  await prisma.readingPassage.deleteMany();
-  console.log('✓ Cleared existing reading data');
-
-  await prisma.readingPassage.create({
-    data: {
-      id: readingSeedPassage.id,
-      title: readingSeedPassage.title,
-      content: readingSeedPassage.content,
-      wordCount: readingSeedPassage.wordCount,
-      difficultyLevel: readingSeedPassage.difficultyLevel,
-      testType: readingSeedPassage.testType,
-      topicCategory: readingSeedPassage.topicCategory,
-      sourceAttribution: readingSeedPassage.sourceAttribution,
-      isActive: true,
-    },
-  });
-
-  await prisma.passageParagraph.createMany({
-    data: readingSeedPassage.paragraphs.map((paragraph) => ({
-      ...paragraph,
-      passageId: readingSeedPassage.id,
-    })),
-  });
-
-  await prisma.readingQuestionSet.createMany({
-    data: readingSeedPassage.questionSets.map((set) => ({
-      id: set.id,
-      passageId: readingSeedPassage.id,
-      questionType: set.questionType,
-      instructions: set.instructions,
-      questionRangeStart: set.questionRangeStart,
-      questionRangeEnd: set.questionRangeEnd,
-      setData: (set.setData ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-    })),
-  });
-
-  await prisma.readingQuestion.createMany({
-    data: readingSeedPassage.questionSets.flatMap((set) =>
-      set.questions.map((question) => ({
-        ...question,
-        passageId: readingSeedPassage.id,
-        questionSetId: set.id,
-      })),
-    ),
-  });
-  console.log('✅ Created 1 starter reading passage with 5 questions');
 
   // =========================
   // ADMIN USER SEED

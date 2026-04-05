@@ -111,27 +111,56 @@ export class WeaknessProfileService {
    * Get recommended drills based on weaknesses
    */
   async getRecommendedDrills(userId: string, limit = 5) {
+    // 1. Prioritize drills due for review from Spaced Repetition (SM-2)
+    const dueReviews = await this.prisma.drillReviewQueue.findMany({
+      where: {
+        userId,
+        nextReviewAt: { lte: new Date() },
+      },
+      include: { drill: true },
+      orderBy: { nextReviewAt: 'asc' },
+      take: limit,
+    });
+
+    const reviewedDrills = dueReviews.map((r) => r.drill);
+
+    if (reviewedDrills.length >= limit) {
+      return reviewedDrills;
+    }
+
+    const remainingLimit = limit - reviewedDrills.length;
+    const excludeIds = reviewedDrills.map((d) => d.id);
+
+    // 2. Fetch drills based on weaknesses
     const weaknesses = await this.getWeaknessProfile(userId);
     const topWeaknesses = weaknesses.slice(0, 3);
+    let newDrills: any[] = [];
 
-    if (topWeaknesses.length === 0) {
-      // Return general drills if no weaknesses identified
-      return this.prisma.writingDrill.findMany({
-        where: { isActive: true },
-        take: limit,
-        orderBy: { difficulty: 'asc' },
+    if (topWeaknesses.length > 0) {
+      const targetErrors = topWeaknesses.map((w) => w.specificError);
+      newDrills = await this.prisma.writingDrill.findMany({
+        where: {
+          isActive: true,
+          id: { notIn: excludeIds },
+          relatedWeaknesses: { hasSome: targetErrors },
+        },
+        take: remainingLimit,
       });
     }
 
-    const targetErrors = topWeaknesses.map((w) => w.specificError);
+    if (newDrills.length < remainingLimit) {
+        const fallbackDrills = await this.prisma.writingDrill.findMany({
+            where: {
+                isActive: true,
+                id: { notIn: [...excludeIds, ...newDrills.map(d => d.id)] }
+            },
+            take: remainingLimit - newDrills.length,
+            orderBy: { difficulty: 'asc' }
+        });
+        newDrills = [...newDrills, ...fallbackDrills];
+    }
 
-    return this.prisma.writingDrill.findMany({
-      where: {
-        isActive: true,
-        relatedWeaknesses: { hasSome: targetErrors },
-      },
-      take: limit,
-    });
+    return [...reviewedDrills, ...newDrills];
   }
 
   private calculateSeverity(frequency: number): Severity {

@@ -112,8 +112,59 @@ export class DrillService {
       }
     }
 
-    // Simple correctness check (can be enhanced with AI)
-    const isCorrect = this.checkAnswer(userAnswer, drill.correctAnswer);
+    // --- Tiered skill classification ---
+    const exactMatchSkills = [
+      'identifying_essay_type',
+    ];
+
+    const fuzzyThenAISkills = [
+      'addressing_all_parts',
+      'data_selection',
+    ];
+
+    const isExactTier = exactMatchSkills.includes(drill.specificSkill);
+    const isFuzzyTier = fuzzyThenAISkills.includes(drill.specificSkill);
+    // Everything else is AI-first (Tier 3)
+
+    let isCorrect = false;
+    let aiFeedbackResult: any = null;
+    let scoringMethod: 'ai' | 'exact_match' | 'fallback' = 'exact_match';
+
+    const performExactMatch = () => this.checkAnswer(userAnswer, drill.correctAnswer);
+
+    if (isExactTier) {
+      // Tier 1: Exact string matching only
+      isCorrect = performExactMatch();
+    } else if (isFuzzyTier) {
+      // Tier 2: Try exact match first, fall back to AI
+      isCorrect = performExactMatch();
+      if (!isCorrect && this.anthropic) {
+        try {
+          aiFeedbackResult = await this.generateAIFeedback(drill, userAnswer, user?.nativeLanguage, 'validate');
+          isCorrect = aiFeedbackResult.isCorrect;
+          scoringMethod = 'ai';
+        } catch (error) {
+          this.logger.error('Error generating AI validation (Tier 2):', error);
+          scoringMethod = 'fallback'; // Fallback to the exact match result
+        }
+      }
+    } else {
+      // Tier 3: AI-first validation
+      if (this.anthropic) {
+        try {
+          aiFeedbackResult = await this.generateAIFeedback(drill, userAnswer, user?.nativeLanguage, 'validate');
+          isCorrect = aiFeedbackResult.isCorrect;
+          scoringMethod = 'ai';
+        } catch (error) {
+          this.logger.error('Error generating AI validation (Tier 3):', error);
+          isCorrect = performExactMatch();
+          scoringMethod = 'fallback';
+        }
+      } else {
+        isCorrect = performExactMatch();
+        scoringMethod = 'fallback';
+      }
+    }
 
     // Save attempt
     await this.prisma.drillAttempt.create({
@@ -126,22 +177,31 @@ export class DrillService {
       },
     });
 
-    // Update progress for every attempt
-    await this.updateDrillProgress(userId);
-
-    // Generate AI feedback if answer is incorrect and Claude is available
-    if (!isCorrect && this.anthropic) {
+    // Generate AI feedback if answer is incorrect and we haven't already generated it
+    if (!isCorrect && !aiFeedbackResult && this.anthropic) {
       try {
-        const aiFeedback = await this.generateAIFeedback(drill, userAnswer, user?.nativeLanguage);
-        return {
-          isCorrect: false,
-          ...aiFeedback,
-          correctAnswer: drill.correctAnswer,
-        };
+        aiFeedbackResult = await this.generateAIFeedback(drill, userAnswer, user?.nativeLanguage, 'feedback_only');
       } catch (error) {
         this.logger.error('Error generating AI feedback:', error);
         // Fall back to basic feedback
       }
+    }
+
+    // Update progress for every attempt
+    await this.updateDrillProgress(userId);
+
+    // --- Spaced Repetition Logic (SM-2 simplified) ---
+    await this.updateDrillReviewQueue(userId, drillId, isCorrect);
+
+    if (aiFeedbackResult) {
+      return {
+        isCorrect,
+        feedback: aiFeedbackResult.feedback,
+        relatedConcept: aiFeedbackResult.relatedConcept,
+        additionalExamples: aiFeedbackResult.additionalExamples,
+        correctAnswer: isCorrect ? undefined : drill.correctAnswer,
+        scoringMethod,
+      };
     }
 
     // Return basic feedback
@@ -155,6 +215,7 @@ export class DrillService {
         .replace(/\b\w/g, (l) => l.toUpperCase()),
       additionalExamples: [],
       correctAnswer: isCorrect ? undefined : drill.correctAnswer,
+      scoringMethod,
     };
   }
 
@@ -203,7 +264,8 @@ export class DrillService {
     drill: any,
     userAnswer: string,
     nativeLanguage?: string | null,
-  ): Promise<Omit<DrillFeedbackResponse, 'isCorrect'>> {
+    mode: 'validate' | 'feedback_only' = 'feedback_only'
+  ): Promise<DrillFeedbackResponse> {
     const prompt = generateDrillFeedbackPrompt({
       drillType: drill.type,
       category: drill.category,
@@ -212,6 +274,7 @@ export class DrillService {
       correctAnswer: drill.correctAnswer,
       userAnswer,
       nativeLanguage,
+      mode,
     });
 
     const response = await this.anthropic.messages.create({
@@ -226,14 +289,35 @@ export class DrillService {
       throw new Error('Unexpected response format');
     }
 
-    // Extract JSON from the response
-    const jsonMatch = content.text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (!jsonMatch) {
-      throw new Error('Failed to parse AI feedback response');
+    let jsonText: string | null = null;
+    
+    // Try to extract from markdown code blocks first (with or without 'json' tag)
+    const blockMatch = content.text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (blockMatch) {
+      jsonText = blockMatch[1];
+    } else {
+      // Fallback: look for the first { and last }
+      const firstBrace = content.text.indexOf('{');
+      const lastBrace = content.text.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonText = content.text.substring(firstBrace, lastBrace + 1);
+      }
     }
 
-    const feedbackData = JSON.parse(jsonMatch[1]);
+    if (!jsonText) {
+      this.logger.error(`AI response lacked JSON. Raw text: ${content.text}`);
+      throw new Error('Failed to extract JSON from AI feedback response');
+    }
+
+    let feedbackData;
+    try {
+      feedbackData = JSON.parse(jsonText);
+    } catch (e) {
+      this.logger.error(`JSON Parse Error. Raw JSON text: ${jsonText}`);
+      throw new Error('Failed to parse JSON from AI feedback response');
+    }
     return {
+      isCorrect: feedbackData.isCorrect ?? false,
       feedback: feedbackData.feedback,
       relatedConcept: feedbackData.relatedConcept,
       additionalExamples: feedbackData.additionalExamples || [],
@@ -260,6 +344,68 @@ export class DrillService {
         data: {
           userId,
           totalDrillsCompleted: 1,
+        },
+      });
+    }
+  }
+
+  /**
+   * Update DrillReviewQueue based on SM-2.
+   * Only creates entries for incorrect answers. Updates existing entries
+   * on subsequent attempts to either extend or reset the interval.
+   */
+  private async updateDrillReviewQueue(userId: string, drillId: string, isCorrect: boolean) {
+    const queueItem = await this.prisma.drillReviewQueue.findUnique({
+      where: { userId_drillId: { userId, drillId } },
+    });
+
+    // First-time correct answer — no need to schedule a review
+    if (!queueItem && isCorrect) {
+      return;
+    }
+
+    const quality = isCorrect ? 4 : 1;
+    let nextEaseFactor = 2.5;
+    let nextInterval = 1.0;
+    let nextConsecutive = 0;
+
+    if (queueItem) {
+      // Existing queue item — recalculate SM-2 parameters
+      nextEaseFactor = Math.max(1.3, queueItem.easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+
+      if (isCorrect) {
+        nextConsecutive = queueItem.consecutiveCorrect + 1;
+        if (nextConsecutive === 1) nextInterval = 1.0;
+        else if (nextConsecutive === 2) nextInterval = 6.0;
+        else nextInterval = queueItem.intervalDays * nextEaseFactor;
+      } else {
+        nextConsecutive = 0;
+        nextInterval = 1.0;
+      }
+
+      const nextReview = new Date(Date.now() + Math.round(nextInterval * 24 * 60 * 60 * 1000));
+
+      await this.prisma.drillReviewQueue.update({
+        where: { userId_drillId: { userId, drillId } },
+        data: {
+          easeFactor: nextEaseFactor,
+          intervalDays: nextInterval,
+          consecutiveCorrect: nextConsecutive,
+          nextReviewAt: nextReview,
+        },
+      });
+    } else {
+      // First-time incorrect — create a new review entry
+      const nextReview = new Date(Date.now() + Math.round(nextInterval * 24 * 60 * 60 * 1000));
+
+      await this.prisma.drillReviewQueue.create({
+        data: {
+          userId,
+          drillId,
+          easeFactor: nextEaseFactor,
+          intervalDays: nextInterval,
+          consecutiveCorrect: nextConsecutive,
+          nextReviewAt: nextReview,
         },
       });
     }

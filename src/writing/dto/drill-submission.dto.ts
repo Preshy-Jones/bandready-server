@@ -16,4 +16,5 @@ export interface DrillFeedbackResponse {
   relatedConcept: string;
   additionalExamples: string[];
   correctAnswer?: string;
+  scoringMethod?: 'ai' | 'exact_match' | 'fallback';
 }
