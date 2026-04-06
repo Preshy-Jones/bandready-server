@@ -17,6 +17,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts",
     "db:seed:demo": "ts-node prisma/demo-seed.ts",
+    "db:seed:drills": "ts-node prisma/seed-drills-only.ts",
     "otp:recover": "ts-node prisma/recover-unverified-users.ts",
     "postinstall": "prisma generate",
     "test": "jest",

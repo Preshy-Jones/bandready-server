@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
+import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   ESSAY_ASSESSMENT_PROVIDER,
@@ -241,4 +242,31 @@ function parseCriterionFeedback(raw: string): EssayCriterionFeedback {
     // old format — wrap plain string in new shape
   }
   return { justification: raw || '', strengths: [], weaknesses: [] };
+}
+
+export async function generateModelAnswer(
+  questionPrompt: string,
+  taskType: string,
+  subType?: string | null,
+): Promise<{ essayText: string; bandScore: number }> {
+  const client = new Anthropic();
+  const taskLabel = taskType === 'TASK1' ? 'Task 1' : 'Task 2';
+  const subTypeHint = subType && subType !== 'general' ? ` (${subType.replace(/_/g, ' ')})` : '';
+
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1200,
+    temperature: 0.7,
+    system: `You are an expert IELTS teacher writing a Band 8.5 model answer. Write only the essay text — no preamble, labels, or commentary of any kind.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Write a Band 8.5 IELTS ${taskLabel}${subTypeHint} model answer for this prompt:\n\n${questionPrompt}`,
+      },
+    ],
+  });
+
+  const content = response.content[0];
+  const essayText = content.type === 'text' ? content.text.trim() : '';
+  return { essayText, bandScore: 8.5 };
 }

@@ -16,7 +16,7 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { EssayAssessmentService } from '../services/essay-assessment.service';
+import { EssayAssessmentService, generateModelAnswer } from '../services/essay-assessment.service';
 import { WeaknessProfileService } from '../services/weakness-profile.service';
 import { ProgressService } from '../services/progress.service';
 import { UsersService } from '../../users/users.service';
@@ -213,6 +213,10 @@ export class EssayController {
     }
 
     return {
+      question: {
+        prompt: submission.question.prompt,
+        taskType: submission.question.taskType,
+      },
       userEssay: {
         text: submission.essayText,
         wordCount: submission.wordCount,
@@ -220,6 +224,31 @@ export class EssayController {
       },
       modelEssay: submission.question.modelEssays[0] || null,
     };
+  }
+
+  /**
+   * Generate a Band 8.5 model answer for this submission's question on demand
+   */
+  @Get('essay/:submissionId/model-answer')
+  async getModelAnswer(@Param('submissionId') submissionId: string) {
+    const submission = await this.prisma.essaySubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        question: {
+          select: { prompt: true, taskType: true, subType: true },
+        },
+      },
+    });
+
+    if (!submission) {
+      throw new BadRequestException('Submission not found');
+    }
+
+    return generateModelAnswer(
+      submission.question.prompt,
+      submission.question.taskType,
+      submission.question.subType,
+    );
   }
 
   /**

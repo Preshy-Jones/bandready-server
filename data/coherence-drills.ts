@@ -237,7 +237,7 @@ export const coherenceDrills = [
   },
   // DISCOURSE MARKERS (continued)
   {
-    id: 'drill-coherence-discourse-002',
+    id: 'drill-coherence-discourse-031',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'discourse_markers',
@@ -250,7 +250,7 @@ export const coherenceDrills = [
     relatedWeaknesses: ['missing_discourse_marker', 'wrong_connector'],
   },
   {
-    id: 'drill-coherence-discourse-003',
+    id: 'drill-coherence-discourse-032',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'discourse_markers',
@@ -615,7 +615,7 @@ export const coherenceDrills = [
   },
   // TOPIC SENTENCES
   {
-    id: 'drill-coherence-topic-001',
+    id: 'drill-coherence-topic-016',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'topic_sentence',
@@ -628,7 +628,7 @@ export const coherenceDrills = [
     relatedWeaknesses: ['weak_topic_sentence'],
   },
   {
-    id: 'drill-coherence-topic-002',
+    id: 'drill-coherence-topic-017',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'topic_sentence',
@@ -1007,7 +1007,7 @@ export const coherenceDrills = [
   },
   // LOGICAL FLOW
   {
-    id: 'drill-coherence-flow-001',
+    id: 'drill-coherence-flow-021',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'logical_flow',
@@ -1268,7 +1268,7 @@ export const coherenceDrills = [
   },
   // PARAGRAPH UNITY
   {
-    id: 'drill-coherence-unity-001',
+    id: 'drill-coherence-unity-016',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'paragraph_unity',
@@ -1464,7 +1464,7 @@ export const coherenceDrills = [
   },
   // COHESIVE CHAINS
   {
-    id: 'drill-coherence-chain-001',
+    id: 'drill-coherence-chain-021',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'cohesive_chains',
@@ -1477,7 +1477,7 @@ export const coherenceDrills = [
     relatedWeaknesses: ['lexical_repetition', 'cohesive_chains'],
   },
   {
-    id: 'drill-coherence-chain-002',
+    id: 'drill-coherence-chain-022',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'cohesive_chains',
@@ -1725,7 +1725,7 @@ export const coherenceDrills = [
   },
   // INTRODUCTION WRITING
   {
-    id: 'drill-coherence-intro-001',
+    id: 'drill-coherence-intro-011',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'introduction_writing',
@@ -1738,7 +1738,7 @@ export const coherenceDrills = [
     relatedWeaknesses: ['weak_introduction', 'missing_thesis'],
   },
   {
-    id: 'drill-coherence-intro-002',
+    id: 'drill-coherence-intro-012',
     type: 'MICRO_DRILL',
     category: 'COHERENCE',
     specificSkill: 'introduction_writing',
