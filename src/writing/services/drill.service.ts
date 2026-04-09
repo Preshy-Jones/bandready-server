@@ -87,11 +87,14 @@ export class DrillService {
     // --- Drill access gating ---
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { nativeLanguage: true, drillsExpireAt: true },
+      select: { nativeLanguage: true, drillsExpireAt: true, subscriptionTier: true, subscriptionExpiresAt: true },
     });
 
-    // Check if user has unlimited drill access (active drillsExpireAt)
-    const hasUnlimitedDrills = user?.drillsExpireAt && user.drillsExpireAt > new Date();
+    // Check if user has unlimited drill access: active drill pack OR active premium subscription
+    const now = new Date();
+    const hasDrillPack = user?.drillsExpireAt && user.drillsExpireAt > now;
+    const isPremium = user?.subscriptionTier === 'premium' && user?.subscriptionExpiresAt && user.subscriptionExpiresAt > now;
+    const hasUnlimitedDrills = hasDrillPack || isPremium;
 
     if (!hasUnlimitedDrills) {
       // Enforce free daily drill limit

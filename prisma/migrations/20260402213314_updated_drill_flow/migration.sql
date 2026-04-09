@@ -5,7 +5,9 @@
 
 */
 -- AlterTable
-ALTER TABLE "writing_drills" ADD COLUMN     "updated_at" TIMESTAMP(3) NOT NULL;
+ALTER TABLE "writing_drills" ADD COLUMN "updated_at" TIMESTAMP(3);
+UPDATE "writing_drills" SET "updated_at" = CURRENT_TIMESTAMP WHERE "updated_at" IS NULL;
+ALTER TABLE "writing_drills" ALTER COLUMN "updated_at" SET NOT NULL;
 
 -- CreateTable
 CREATE TABLE "drill_review_queue" (
