@@ -555,6 +555,7 @@ async function seedReadingContent() {
           testType: passageData.testType as ReadingTestType,
           topicCategory: passageData.topicCategory,
           sourceAttribution: passageData.sourceAttribution ?? null,
+          vocabularyTerms: passageData.vocabularyTerms ?? undefined,
           isActive: true,
         },
       });
