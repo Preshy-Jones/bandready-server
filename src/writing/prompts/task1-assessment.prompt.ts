@@ -97,8 +97,7 @@ You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no 
   },
   "annotations": [
     {
-      "startIndex": <number>,
-      "endIndex": <number>,
+      "text": "<exact phrase or sentence snippet copied verbatim from the report — keep to 5-25 words>",
       "color": "<green | yellow | red>",
       "type": "<task_response | coherence_cohesion | lexical_resource | grammatical_range_accuracy>",
       "explanation": "<what is good, could improve, or is an error>"

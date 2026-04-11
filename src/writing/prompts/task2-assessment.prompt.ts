@@ -194,8 +194,7 @@ You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no 
   },
   "annotations": [
     {
-      "startIndex": <number — character start position in the essay text>,
-      "endIndex": <number — character end position in the essay text>,
+      "text": "<exact phrase or sentence snippet copied verbatim from the essay — keep to 5-25 words>",
       "color": "<green | yellow | red>",
       "type": "<task_response | coherence_cohesion | lexical_resource | grammatical_range_accuracy>",
       "explanation": "<Brief explanation of what is good (green), could improve (yellow), or is an error (red)>"
@@ -241,7 +240,7 @@ You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no 
 Each section serves a DISTINCT purpose. Do NOT duplicate analysis across sections:
 
 - **feedback** = Per-criterion justification and evidence (the WHY behind each score)
-- **annotations** = In-text highlights mapped to character positions (the WHERE in the essay)
+- **annotations** = In-text highlights on specific phrases (the WHERE in the essay)
 - **detectedErrors** = Specific errors with corrections (the WHAT is wrong and how to fix it)
 - **examinerInsights** = Sentence-level commentary on 3-5 key sentences (the HOW individual sentences affect scoring)
 - **vocabularySuggestions** = Lexical upgrades for genuinely weak items only, max 3-5 (NOT a synonym exercise)
@@ -251,9 +250,11 @@ Each section serves a DISTINCT purpose. Do NOT duplicate analysis across section
 - "green" = strong examples that positively demonstrate a criterion (aim for 4-6)
 - "yellow" = acceptable but could be improved (aim for 2-4)
 - "red" = clear errors or significant weaknesses (only where actual errors exist)
-- startIndex and endIndex must be accurate character positions within the essay text
+- The "text" field MUST be a short, EXACT verbatim copy-paste from the essay (5-25 words). Do NOT paraphrase.
+- Annotate specific phrases, clauses, or short sentences — NOT entire paragraphs
 - Each annotation maps to one of the four criteria via the "type" field
 - Do NOT annotate the same text span for the same criterion more than once
+- Aim for 8-14 total annotations spread across the essay
 
 ### Examiner Insights Rules
 - Select 3-5 sentences most significant to the overall score

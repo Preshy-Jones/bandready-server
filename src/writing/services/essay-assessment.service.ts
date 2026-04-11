@@ -17,7 +17,7 @@ import {
   TASK1_GENERAL_SYSTEM_PROMPT,
   generateTask1GeneralAssessmentPrompt,
 } from '../prompts/task1-general-assessment.prompt';
-import { EssayCriterionFeedback, EssayFeedbackResponse } from '../dto/essay-feedback.dto';
+import { Annotation, EssayCriterionFeedback, EssayFeedbackResponse } from '../dto/essay-feedback.dto';
 import { TaskType, ExamType } from '@prisma/client';
 
 @Injectable()
@@ -96,6 +96,12 @@ export class EssayAssessmentService {
         throw new BadRequestException('Invalid assessment response structure');
       }
 
+      // Post-process annotations: convert AI text snippets → accurate startIndex/endIndex
+      assessmentData.annotations = this.resolveAnnotationIndices(
+        essayText,
+        assessmentData.annotations,
+      );
+
       return assessmentData;
     } catch (error) {
       this.logger.error('Error during essay assessment:', error);
@@ -106,6 +112,84 @@ export class EssayAssessmentService {
         'Failed to assess essay. Please try again.',
       );
     }
+  }
+
+  /**
+   * Convert AI-generated text-based annotations into accurate startIndex/endIndex.
+   *
+   * The AI returns { text, color, type, explanation } — we find the exact position
+   * of each snippet in the essay so the frontend can highlight precisely.
+   * Unmatched snippets are silently dropped. Overlapping annotations are removed.
+   */
+  private resolveAnnotationIndices(
+    essayText: string,
+    rawAnnotations: any[],
+  ): Annotation[] {
+    if (!rawAnnotations?.length) return [];
+
+    const resolved: Annotation[] = [];
+    const usedRanges: Array<{ start: number; end: number }> = [];
+
+    for (const ann of rawAnnotations) {
+      const snippet: string | undefined = ann.text;
+      if (!snippet || typeof snippet !== 'string' || snippet.length < 3) continue;
+
+      // Find the snippet in the essay text
+      const startIndex = essayText.indexOf(snippet);
+      if (startIndex === -1) {
+        // Try case-insensitive fallback for minor casing mismatches
+        const lowerEssay = essayText.toLowerCase();
+        const lowerSnippet = snippet.toLowerCase();
+        const ciStart = lowerEssay.indexOf(lowerSnippet);
+        if (ciStart === -1) {
+          this.logger.debug(`Annotation snippet not found in essay: "${snippet.substring(0, 50)}..."`);
+          continue;
+        }
+        // Use the case-insensitive match position but preserve original essay text
+        const endIndex = ciStart + snippet.length;
+
+        // Check for overlaps
+        const overlaps = usedRanges.some(
+          (r) => ciStart < r.end && endIndex > r.start,
+        );
+        if (overlaps) continue;
+
+        usedRanges.push({ start: ciStart, end: endIndex });
+        resolved.push({
+          startIndex: ciStart,
+          endIndex: endIndex,
+          color: ann.color || 'green',
+          type: ann.type || 'grammatical_range_accuracy',
+          explanation: ann.explanation || '',
+        });
+      } else {
+        const endIndex = startIndex + snippet.length;
+
+        // Check for overlaps with already resolved annotations
+        const overlaps = usedRanges.some(
+          (r) => startIndex < r.end && endIndex > r.start,
+        );
+        if (overlaps) continue;
+
+        usedRanges.push({ start: startIndex, end: endIndex });
+        resolved.push({
+          startIndex,
+          endIndex,
+          color: ann.color || 'green',
+          type: ann.type || 'grammatical_range_accuracy',
+          explanation: ann.explanation || '',
+        });
+      }
+    }
+
+    // Sort by position for consistent rendering
+    resolved.sort((a, b) => a.startIndex - b.startIndex);
+
+    this.logger.log(
+      `Resolved ${resolved.length}/${rawAnnotations.length} annotations to exact positions`,
+    );
+
+    return resolved;
   }
 
   /**
