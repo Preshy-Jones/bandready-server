@@ -14,34 +14,34 @@ enum Role {
 }
 
 model User {
-  id                    String    @id @default(uuid())
-  email                 String    @unique
-  passwordHash          String?   @map("password_hash")
-  fullName              String?   @map("full_name")
-  googleId              String?   @unique @map("google_id")
-  avatarUrl             String?   @map("avatar_url")
-  targetBandScore       Decimal   @default(7.0) @map("target_band_score") @db.Decimal(2, 1)
-  targetExamDate        DateTime? @map("target_exam_date")
-  nativeLanguage        String?   @map("native_language")
-  country               String?
-  examType              ExamType  @default(ACADEMIC) @map("exam_type")
-  subscriptionTier      String    @default("none") @map("subscription_tier")
-  subscriptionExpiresAt DateTime? @map("subscription_expires_at")
-  paystackCustomerCode  String?   @map("paystack_customer_code")
-  paddleCustomerId      String?   @map("paddle_customer_id")
-  paddleSubscriptionId  String?   @map("paddle_subscription_id")
-  polarCustomerId       String?   @map("polar_customer_id")
-  isEmailVerified       Boolean   @default(false) @map("is_email_verified")
-  emailVerificationOtp  String?   @map("email_verification_otp")
+  id                         String    @id @default(uuid())
+  email                      String    @unique
+  passwordHash               String?   @map("password_hash")
+  fullName                   String?   @map("full_name")
+  googleId                   String?   @unique @map("google_id")
+  avatarUrl                  String?   @map("avatar_url")
+  targetBandScore            Decimal   @default(7.0) @map("target_band_score") @db.Decimal(2, 1)
+  targetExamDate             DateTime? @map("target_exam_date")
+  nativeLanguage             String?   @map("native_language")
+  country                    String?
+  examType                   ExamType  @default(ACADEMIC) @map("exam_type")
+  subscriptionTier           String    @default("none") @map("subscription_tier")
+  subscriptionExpiresAt      DateTime? @map("subscription_expires_at")
+  paystackCustomerCode       String?   @map("paystack_customer_code")
+  paddleCustomerId           String?   @map("paddle_customer_id")
+  paddleSubscriptionId       String?   @map("paddle_subscription_id")
+  polarCustomerId            String?   @map("polar_customer_id")
+  isEmailVerified            Boolean   @default(false) @map("is_email_verified")
+  emailVerificationOtp       String?   @map("email_verification_otp")
   emailVerificationOtpExpiry DateTime? @map("email_verification_otp_expiry")
-  passwordResetTokenHash String?  @map("password_reset_token_hash")
-  passwordResetTokenExpiry DateTime? @map("password_reset_token_expiry")
-  speakingBalance       Int       @default(0) @map("speaking_balance")
-  writingBalance        Int       @default(0) @map("writing_balance")
-  drillsExpireAt        DateTime? @map("drills_expire_at")
-  role                  Role      @default(USER)
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  passwordResetTokenHash     String?   @map("password_reset_token_hash")
+  passwordResetTokenExpiry   DateTime? @map("password_reset_token_expiry")
+  speakingBalance            Int       @default(0) @map("speaking_balance")
+  writingBalance             Int       @default(0) @map("writing_balance")
+  drillsExpireAt             DateTime? @map("drills_expire_at")
+  role                       Role      @default(USER)
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   practiceSessions PracticeSession[]
   progress         UserProgress?
@@ -54,6 +54,9 @@ model User {
   writingProgress     WritingProgress?
   paymentTransactions PaymentTransaction[]
   drillReviewQueues   DrillReviewQueue[]
+  readingSessions     ReadingSession[]
+  readingProgress     ReadingProgress[]
+  readingAchievements ReadingAchievement[]
 
   @@map("users")
 }
@@ -555,4 +558,216 @@ model AppSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
+}
+
+// =============================================
+// READING MODULE
+// =============================================
+
+enum ReadingDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ReadingTestType {
+  ACADEMIC
+  GENERAL_TRAINING
+}
+
+enum ReadingSessionMode {
+  FULL_TEST
+  SINGLE_PASSAGE
+  QUESTION_TYPE_PRACTICE
+  REVIEW
+}
+
+enum ReadingQuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE_NOT_GIVEN
+  YES_NO_NOT_GIVEN
+  MATCHING_HEADINGS
+  MATCHING_INFORMATION
+  MATCHING_FEATURES
+  MATCHING_SENTENCE_ENDINGS
+  SENTENCE_COMPLETION
+  SUMMARY_COMPLETION
+  SHORT_ANSWER
+  DIAGRAM_LABEL
+}
+
+model ReadingPassage {
+  id                String            @id @default(uuid())
+  title             String            @db.VarChar(255)
+  content           String            @db.Text
+  wordCount         Int               @map("word_count")
+  difficultyLevel   ReadingDifficulty @map("difficulty_level")
+  testType          ReadingTestType   @map("test_type")
+  topicCategory     String            @map("topic_category") @db.VarChar(100)
+  sourceAttribution String?           @map("source_attribution") @db.Text
+  vocabularyTerms   Json?             @map("vocabulary_terms")
+  isActive          Boolean           @default(true) @map("is_active")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  paragraphs   PassageParagraph[]
+  questions    ReadingQuestion[]
+  questionSets ReadingQuestionSet[]
+  sessionItems ReadingSessionPassage[]
+
+  @@index([difficultyLevel])
+  @@index([testType])
+  @@index([topicCategory])
+  @@map("reading_passages")
+}
+
+model PassageParagraph {
+  id             String         @id @default(uuid())
+  passageId      String         @map("passage_id")
+  passage        ReadingPassage @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  paragraphIndex Int            @map("paragraph_index")
+  label          String         @db.VarChar(5)
+  content        String         @db.Text
+
+  @@unique([passageId, paragraphIndex])
+  @@unique([passageId, label])
+  @@map("passage_paragraphs")
+}
+
+model ReadingQuestionSet {
+  id                 String              @id @default(uuid())
+  passageId          String              @map("passage_id")
+  passage            ReadingPassage      @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  questionType       ReadingQuestionType @map("question_type")
+  instructions       String              @db.Text
+  questionRangeStart Int                 @map("question_range_start")
+  questionRangeEnd   Int                 @map("question_range_end")
+  setData            Json?               @map("set_data")
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  questions ReadingQuestion[]
+
+  @@index([passageId, questionType])
+  @@map("reading_question_sets")
+}
+
+model ReadingQuestion {
+  id             String              @id @default(uuid())
+  passageId      String              @map("passage_id")
+  passage        ReadingPassage      @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  questionSetId  String?             @map("question_set_id")
+  questionSet    ReadingQuestionSet? @relation(fields: [questionSetId], references: [id], onDelete: SetNull)
+  questionType   ReadingQuestionType @map("question_type")
+  questionNumber Int                 @map("question_number")
+  questionData   Json                @map("question_data")
+  correctAnswer  Json                @map("correct_answer")
+  explanation    String?             @db.Text
+  skillTested    String?             @map("skill_tested") @db.VarChar(100)
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  answers ReadingAnswer[]
+
+  @@unique([passageId, questionNumber])
+  @@index([passageId])
+  @@index([questionType])
+  @@map("reading_questions")
+}
+
+model ReadingSession {
+  id               String             @id @default(uuid())
+  userId           String             @map("user_id")
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testType         ReadingTestType    @map("test_type")
+  mode             ReadingSessionMode
+  isTimed          Boolean            @default(true) @map("is_timed")
+  startedAt        DateTime           @default(now()) @map("started_at")
+  completedAt      DateTime?          @map("completed_at")
+  timeSpentSeconds Int?               @map("time_spent_seconds")
+  practiceFilters  Json?              @map("practice_filters")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  passages ReadingSessionPassage[]
+  answers  ReadingAnswer[]
+  results  ReadingResult[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([completedAt])
+  @@map("reading_sessions")
+}
+
+model ReadingSessionPassage {
+  id               String         @id @default(uuid())
+  sessionId        String         @map("session_id")
+  session          ReadingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  passageId        String         @map("passage_id")
+  passage          ReadingPassage @relation(fields: [passageId], references: [id])
+  passageOrder     Int            @map("passage_order")
+  timeSpentSeconds Int?           @map("time_spent_seconds")
+
+  @@unique([sessionId, passageOrder])
+  @@index([passageId])
+  @@map("reading_session_passages")
+}
+
+model ReadingAnswer {
+  id               String          @id @default(uuid())
+  sessionId        String          @map("session_id")
+  session          ReadingSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId       String          @map("question_id")
+  question         ReadingQuestion @relation(fields: [questionId], references: [id])
+  userAnswer       Json            @map("user_answer")
+  isCorrect        Boolean         @map("is_correct")
+  timeSpentSeconds Int?            @map("time_spent_seconds")
+  answeredAt       DateTime        @default(now()) @map("answered_at")
+
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@map("reading_answers")
+}
+
+model ReadingResult {
+  id                    String         @id @default(uuid())
+  sessionId             String         @map("session_id")
+  session               ReadingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  rawScore              Int            @map("raw_score")
+  totalQuestions        Int            @map("total_questions")
+  bandScore             Decimal        @map("band_score") @db.Decimal(3, 1)
+  questionTypeBreakdown Json?          @map("question_type_breakdown")
+  skillBreakdown        Json?          @map("skill_breakdown")
+  timeManagement        Json?          @map("time_management")
+  aiAnalysis            Json?          @map("ai_analysis")
+  completionReason      String?        @map("completion_reason")
+  createdAt             DateTime       @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@map("reading_results")
+}
+
+model ReadingProgress {
+  id              String              @id @default(uuid())
+  userId          String              @map("user_id")
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionType    ReadingQuestionType @map("question_type")
+  attempts        Int                 @default(0)
+  correct         Int                 @default(0)
+  accuracyRate    Decimal?            @map("accuracy_rate") @db.Decimal(5, 2)
+  lastPracticedAt DateTime?           @map("last_practiced_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  @@unique([userId, questionType])
+  @@index([userId])
+  @@map("reading_progress")
+}
+
+model ReadingAchievement {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("reading_achievements")
 }

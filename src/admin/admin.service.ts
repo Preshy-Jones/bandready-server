@@ -334,6 +334,429 @@ export class AdminService {
     return this.prisma.writingDrill.delete({ where: { id } });
   }
 
+  // ─── Reading Content ───────────────────────────────────────
+
+  async getReadingPassages(params: {
+    page?: number;
+    limit?: number;
+    testType?: string;
+    difficulty?: string;
+    topic?: string;
+    active?: string;
+  }) {
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const skip = (page - 1) * limit;
+
+    try {
+      const whereClauses = [Prisma.sql`TRUE`];
+
+      if (params.testType) {
+        const normalized = params.testType.trim().toUpperCase();
+        whereClauses.push(
+          Prisma.sql`"test_type" = ${normalized}::"ReadingTestType"`,
+        );
+      }
+
+      if (params.difficulty) {
+        const normalized = params.difficulty.trim().toUpperCase();
+        whereClauses.push(
+          Prisma.sql`"difficulty_level" = ${normalized}::"ReadingDifficulty"`,
+        );
+      }
+
+      if (params.active === 'true') {
+        whereClauses.push(Prisma.sql`"is_active" = true`);
+      }
+
+      if (params.active === 'false') {
+        whereClauses.push(Prisma.sql`"is_active" = false`);
+      }
+
+      if (params.topic) {
+        whereClauses.push(
+          Prisma.sql`LOWER("topic_category") LIKE ${`%${params.topic.trim().toLowerCase()}%`}`,
+        );
+      }
+
+      const whereSql = Prisma.join(whereClauses, ' AND ');
+
+      const passages = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+        SELECT
+          "id",
+          "title",
+          "word_count" AS "wordCount",
+          "difficulty_level" AS "difficultyLevel",
+          "test_type" AS "testType",
+          "topic_category" AS "topicCategory",
+          "source_attribution" AS "sourceAttribution",
+          "is_active" AS "isActive",
+          "created_at" AS "createdAt",
+          "updated_at" AS "updatedAt"
+        FROM "reading_passages"
+        WHERE ${whereSql}
+        ORDER BY "created_at" DESC
+        LIMIT ${limit}
+        OFFSET ${skip}
+      `);
+
+      const totalRows = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+        SELECT COUNT(*)::bigint AS "count"
+        FROM "reading_passages"
+        WHERE ${whereSql}
+      `);
+
+      const total = Number(totalRows[0]?.count || 0);
+
+      return {
+        passages,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      return this.handleReadingUnavailable('reading_passages', error, {
+        passages: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      });
+    }
+  }
+
+  async getReadingPassageDetail(id: string) {
+    try {
+      const passages = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+        SELECT
+          "id",
+          "title",
+          "content",
+          "word_count" AS "wordCount",
+          "difficulty_level" AS "difficultyLevel",
+          "test_type" AS "testType",
+          "topic_category" AS "topicCategory",
+          "source_attribution" AS "sourceAttribution",
+          "is_active" AS "isActive",
+          "created_at" AS "createdAt",
+          "updated_at" AS "updatedAt"
+        FROM "reading_passages"
+        WHERE "id" = ${id}
+        LIMIT 1
+      `);
+
+      const passage = passages[0];
+      if (!passage) {
+        throw new NotFoundException('Reading passage not found');
+      }
+
+      const paragraphs = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+        SELECT
+          "id",
+          "paragraph_index" AS "paragraphIndex",
+          "label",
+          "content"
+        FROM "passage_paragraphs"
+        WHERE "passage_id" = ${id}
+        ORDER BY "paragraph_index" ASC
+      `);
+
+      const questionSets = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+        SELECT
+          "id",
+          "question_type" AS "questionType",
+          "instructions",
+          "question_range_start" AS "questionRangeStart",
+          "question_range_end" AS "questionRangeEnd",
+          "set_data" AS "setData",
+          "created_at" AS "createdAt"
+        FROM "reading_question_sets"
+        WHERE "passage_id" = ${id}
+        ORDER BY "question_range_start" ASC
+      `);
+
+      const questions = await this.prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+        SELECT
+          "id",
+          "question_set_id" AS "questionSetId",
+          "question_type" AS "questionType",
+          "question_number" AS "questionNumber",
+          "question_data" AS "questionData",
+          "correct_answer" AS "correctAnswer",
+          "explanation",
+          "skill_tested" AS "skillTested",
+          "created_at" AS "createdAt"
+        FROM "reading_questions"
+        WHERE "passage_id" = ${id}
+        ORDER BY "question_number" ASC
+      `);
+
+      return {
+        passage,
+        paragraphs,
+        questionSets,
+        questions,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      return this.handleReadingUnavailable('reading_passage_detail', error, { id });
+    }
+  }
+
+  async createReadingPassage(data: Record<string, unknown>) {
+    const {
+      title,
+      content,
+      testType,
+      difficultyLevel,
+      topicCategory,
+      sourceAttribution,
+      paragraphs,
+      questionSets,
+    } = data as {
+      title: string;
+      content: string;
+      testType: string;
+      difficultyLevel: string;
+      topicCategory: string;
+      sourceAttribution?: string;
+      paragraphs: Array<{ label: string; content: string }>;
+      questionSets: Array<{
+        questionType: string;
+        instructions: string;
+        setData?: any;
+        questions: Array<{
+          questionNumber: number;
+          questionData: any;
+          correctAnswer: any;
+          explanation?: string;
+          skillTested?: string;
+        }>;
+      }>;
+    };
+
+    const wordCount = content.split(/\s+/).filter(Boolean).length;
+
+    const passage = await this.prisma.$transaction(async (tx) => {
+      // 1. Create the passage
+      const created = await tx.readingPassage.create({
+        data: {
+          title,
+          content,
+          wordCount,
+          testType: testType as any,
+          difficultyLevel: difficultyLevel as any,
+          topicCategory,
+          sourceAttribution: sourceAttribution || null,
+          isActive: true,
+        },
+      });
+
+      // 2. Create paragraphs
+      if (paragraphs?.length) {
+        await tx.passageParagraph.createMany({
+          data: paragraphs.map((p, idx) => ({
+            passageId: created.id,
+            paragraphIndex: idx,
+            label: p.label,
+            content: p.content,
+          })),
+        });
+      }
+
+      // 3. Create question sets + questions
+      if (questionSets?.length) {
+        for (const qs of questionSets) {
+          const rangeStart = qs.questions[0]?.questionNumber ?? 0;
+          const rangeEnd = qs.questions[qs.questions.length - 1]?.questionNumber ?? 0;
+
+          const questionSet = await tx.readingQuestionSet.create({
+            data: {
+              passageId: created.id,
+              questionType: qs.questionType as any,
+              instructions: qs.instructions,
+              questionRangeStart: rangeStart,
+              questionRangeEnd: rangeEnd,
+              setData: qs.setData || undefined,
+            },
+          });
+
+          if (qs.questions?.length) {
+            await tx.readingQuestion.createMany({
+              data: qs.questions.map((q) => ({
+                passageId: created.id,
+                questionSetId: questionSet.id,
+                questionType: qs.questionType as any,
+                questionNumber: q.questionNumber,
+                questionData: q.questionData,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation || null,
+                skillTested: q.skillTested || null,
+              })),
+            });
+          }
+        }
+      }
+
+      return created;
+    });
+
+    // Return the fully-loaded passage
+    return this.getReadingPassageDetail(passage.id);
+  }
+
+  async updateReadingPassage(id: string, data: Record<string, unknown>) {
+    const {
+      title,
+      content,
+      testType,
+      difficultyLevel,
+      topicCategory,
+      sourceAttribution,
+      isActive,
+      paragraphs,
+      questionSets,
+    } = data as {
+      title?: string;
+      content?: string;
+      testType?: string;
+      difficultyLevel?: string;
+      topicCategory?: string;
+      sourceAttribution?: string;
+      isActive?: boolean;
+      paragraphs?: Array<{ label: string; content: string }>;
+      questionSets?: Array<{
+        questionType: string;
+        instructions: string;
+        setData?: any;
+        questions: Array<{
+          questionNumber: number;
+          questionData: any;
+          correctAnswer: any;
+          explanation?: string;
+          skillTested?: string;
+        }>;
+      }>;
+    };
+
+    // Make sure passage exists
+    const existing = await this.prisma.readingPassage.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Reading passage not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Build update payload for metadata fields
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      if (content !== undefined) {
+        updateData.content = content;
+        updateData.wordCount = content.split(/\s+/).filter(Boolean).length;
+      }
+      if (testType !== undefined) updateData.testType = testType;
+      if (difficultyLevel !== undefined) updateData.difficultyLevel = difficultyLevel;
+      if (topicCategory !== undefined) updateData.topicCategory = topicCategory;
+      if (sourceAttribution !== undefined) updateData.sourceAttribution = sourceAttribution;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      if (Object.keys(updateData).length > 0) {
+        await tx.readingPassage.update({ where: { id }, data: updateData });
+      }
+
+      // Replace paragraphs if provided
+      if (paragraphs) {
+        await tx.passageParagraph.deleteMany({ where: { passageId: id } });
+        await tx.passageParagraph.createMany({
+          data: paragraphs.map((p, idx) => ({
+            passageId: id,
+            paragraphIndex: idx,
+            label: p.label,
+            content: p.content,
+          })),
+        });
+      }
+
+      // Replace question sets and questions if provided
+      if (questionSets) {
+        await tx.readingQuestion.deleteMany({ where: { passageId: id } });
+        await tx.readingQuestionSet.deleteMany({ where: { passageId: id } });
+
+        for (const qs of questionSets) {
+          const rangeStart = qs.questions[0]?.questionNumber ?? 0;
+          const rangeEnd = qs.questions[qs.questions.length - 1]?.questionNumber ?? 0;
+
+          const questionSet = await tx.readingQuestionSet.create({
+            data: {
+              passageId: id,
+              questionType: qs.questionType as any,
+              instructions: qs.instructions,
+              questionRangeStart: rangeStart,
+              questionRangeEnd: rangeEnd,
+              setData: qs.setData || undefined,
+            },
+          });
+
+          if (qs.questions?.length) {
+            await tx.readingQuestion.createMany({
+              data: qs.questions.map((q) => ({
+                passageId: id,
+                questionSetId: questionSet.id,
+                questionType: qs.questionType as any,
+                questionNumber: q.questionNumber,
+                questionData: q.questionData,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation || null,
+                skillTested: q.skillTested || null,
+              })),
+            });
+          }
+        }
+      }
+    });
+
+    return this.getReadingPassageDetail(id);
+  }
+
+  async deleteReadingPassage(id: string) {
+    const existing = await this.prisma.readingPassage.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Reading passage not found');
+    }
+
+    // Check for active sessions using this passage
+    // @ts-ignore - readingSessionPassage may not be generated yet
+    const activeSessions = await this.prisma.readingSessionPassage.count({
+      where: {
+        passageId: id,
+        session: { completedAt: null },
+      },
+    });
+
+    if (activeSessions > 0) {
+      // Soft-delete: mark passage as inactive
+      await this.prisma.readingPassage.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      return {
+        status: 'soft_deleted',
+        message: `Passage deactivated (${activeSessions} active session(s) still reference it).`,
+      };
+    }
+
+    // Hard-delete: cascade handles related records
+    await this.prisma.readingPassage.delete({ where: { id } });
+    return { status: 'deleted', message: 'Passage permanently deleted.' };
+  }
+
   // ─── Payments ───────────────────────────────────────────────
 
   async getTransactions(params: {
@@ -416,6 +839,23 @@ export class AdminService {
       recentNGN: (recentNGN._sum.amountKobo || 0) / 100,
       recentUSD: (recentUSD._sum.amountCents || 0) / 100,
       failedCount,
+    };
+  }
+
+  private handleReadingUnavailable(
+    resource: string,
+    error: unknown,
+    extra: Record<string, unknown> = {},
+  ) {
+    const message = error instanceof Error ? error.message : null;
+
+    return {
+      status: 'not_ready',
+      resource,
+      ...extra,
+      ...(message ? { error: message } : {}),
+      message:
+        'Reading storage is not available yet. Ensure the reading migration has been applied before using this admin endpoint.',
     };
   }
 }

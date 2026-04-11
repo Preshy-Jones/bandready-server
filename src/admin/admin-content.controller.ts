@@ -107,4 +107,45 @@ export class AdminContentController {
   async deleteDrill(@Param('id') id: string) {
     return this.adminService.deleteDrill(id);
   }
+
+  // ─── Reading Content ───────────────────────────────────────
+
+  @Get('reading/passages')
+  async getReadingPassages(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('testType') testType?: string,
+    @Query('difficulty') difficulty?: string,
+    @Query('topic') topic?: string,
+    @Query('active') active?: string,
+  ) {
+    return this.adminService.getReadingPassages({
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      testType,
+      difficulty,
+      topic,
+      active,
+    });
+  }
+
+  @Get('reading/passages/:id')
+  async getReadingPassageDetail(@Param('id') id: string) {
+    return this.adminService.getReadingPassageDetail(id);
+  }
+
+  @Post('reading/passages')
+  async createReadingPassage(@Body() body: any) {
+    return this.adminService.createReadingPassage(body);
+  }
+
+  @Patch('reading/passages/:id')
+  async updateReadingPassage(@Param('id') id: string, @Body() body: any) {
+    return this.adminService.updateReadingPassage(id, body);
+  }
+
+  @Delete('reading/passages/:id')
+  async deleteReadingPassage(@Param('id') id: string) {
+    return this.adminService.deleteReadingPassage(id);
+  }
 }
