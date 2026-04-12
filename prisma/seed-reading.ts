@@ -28,7 +28,7 @@ async function main() {
           testType: passageData.testType as ReadingTestType,
           topicCategory: passageData.topicCategory,
           sourceAttribution: passageData.sourceAttribution ?? null,
-          vocabularyTerms: passageData.vocabularyTerms ?? undefined,
+          vocabularyTerms: (passageData.vocabularyTerms ?? undefined) as any,
           isActive: true,
         },
       });
@@ -84,7 +84,7 @@ async function main() {
       }
 
       totalPassages++;
-    });
+    }, { timeout: 60000 });
   }
 
   console.log(`Created ${totalPassages} reading passages with ${totalQuestions} questions`);

@@ -174,4 +174,64 @@ export class PracticeController {
 
     return this.practiceService.generateEnhancedModelAnswer(sessionId, user.id);
   }
+
+  // ========================
+  // Speaking Diagnostic
+  // ========================
+
+  @Post('diagnostic/start')
+  @UseGuards(AuthGuard('jwt'))
+  async startDiagnostic(@CurrentUser() user: User) {
+    // Check for existing diagnostic session first
+    const existingSession = await this.practiceService.getDiagnosticSession(user.id);
+    
+    // If they already completed a diagnostic, return it immediately
+    if (existingSession && existingSession.completedAt) {
+      return { session: existingSession, question: existingSession.question, hasCompleted: true };
+    }
+    
+    // If they have an in-progress (uncompleted) diagnostic, resume it
+    if (existingSession && !existingSession.completedAt) {
+      return { session: existingSession, question: existingSession.question, hasCompleted: false };
+    }
+    
+    // No existing diagnostic — create a new one (doesn't consume balance)
+    const question = await this.practiceService.getRandomQuestion(2);
+    if (!question) {
+      throw new BadRequestException('No Part 2 questions available for the diagnostic.');
+    }
+    const session = await this.practiceService.createDiagnosticSession(user.id, question.id);
+    
+    return { session, question, hasCompleted: false };
+  }
+
+  @Post('diagnostic/submit')
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('audio'))
+  async submitDiagnostic(
+    @CurrentUser() user: User,
+    @UploadedFile() audioFile: Express.Multer.File,
+    @Body() dto: { sessionId: string; speakingTime?: string },
+  ) {
+    if (!audioFile) {
+      throw new BadRequestException('Audio file is required');
+    }
+
+    const speakingTime = dto.speakingTime ? Number(dto.speakingTime) : undefined;
+
+    return this.practiceService.processSession(
+      dto.sessionId,
+      user.id,
+      audioFile.buffer,
+      undefined, // No prep time used
+      speakingTime,
+    );
+  }
+
+  @Get('diagnostic/results')
+  @UseGuards(AuthGuard('jwt'))
+  async getDiagnosticResults(@CurrentUser() user: User) {
+    const session = await this.practiceService.getDiagnosticSession(user.id);
+    return { session };
+  }
 }

@@ -156,6 +156,7 @@ model PracticeSession {
   enhancedModelAnswer Json?   @map("enhanced_model_answer")
 
   // Session metadata
+  sessionType         SessionType @default(PRACTICE) @map("session_type")
   prepTimeUsedSeconds Int?      @map("prep_time_used_seconds")
   speakingTimeSeconds Decimal?  @map("speaking_time_seconds") @db.Decimal(6, 2)
   completedAt         DateTime? @map("completed_at")

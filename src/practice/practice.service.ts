@@ -192,6 +192,97 @@ export class PracticeService {
     });
   }
 
+  async createDiagnosticSession(userId: string, questionId: string) {
+    // Check if user already has a diagnostic session
+    const existing = await this.getDiagnosticSession(userId);
+    if (existing) {
+      return existing;
+    }
+
+    // Create session WITHOUT deducting talking balance
+    return this.prisma.practiceSession.create({
+      data: {
+        userId,
+        questionId,
+        part: 2,
+        sessionType: 'DIAGNOSTIC',
+      },
+      select: {
+        id: true,
+        userId: true,
+        questionId: true,
+        part: true,
+        audioUrl: true,
+        audioDurationSeconds: true,
+        transcript: true,
+        transcriptWithTimestamps: true,
+        overallBandScore: true,
+        fluencyCoherenceScore: true,
+        lexicalResourceScore: true,
+        grammarAccuracyScore: true,
+        pronunciationScore: true,
+        wordsPerMinute: true,
+        totalWords: true,
+        fillerWordCount: true,
+        fillerWordsDetail: true,
+        pauseCount: true,
+        longPauseCount: true,
+        pauseLocations: true,
+        feedbackFluency: true,
+        feedbackVocabulary: true,
+        feedbackGrammar: true,
+        feedbackPronunciation: true,
+        feedbackOverall: true,
+        vocabularySuggestions: true,
+        grammarCorrections: true,
+        mispronouncedWords: true,
+        modelAnswer: true,
+        prepTimeUsedSeconds: true,
+        speakingTimeSeconds: true,
+        completedAt: true,
+        createdAt: true,
+        mockTestId: true,
+        questionNumber: true,
+        question: true,
+      },
+    });
+  }
+
+  async getDiagnosticSession(userId: string) {
+    const session = await this.prisma.practiceSession.findFirst({
+      where: {
+        userId,
+        sessionType: 'DIAGNOSTIC',
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        question: true,
+      },
+    });
+
+    if (session?.audioUrl) {
+      try {
+        const signedUrl = await this.s3Service.getSignedUrl(session.audioUrl);
+        return { ...session, audioUrl: signedUrl };
+      } catch (error) {
+        return { ...session, audioUrl: null };
+      }
+    }
+
+    return session;
+  }
+
+  async hasCompletedDiagnostic(userId: string) {
+    const count = await this.prisma.practiceSession.count({
+      where: {
+        userId,
+        sessionType: 'DIAGNOSTIC',
+        completedAt: { not: null },
+      },
+    });
+    return count > 0;
+  }
+
   async processSession(
     sessionId: string,
     userId: string,
@@ -315,6 +406,7 @@ export class PracticeService {
     const where: Prisma.PracticeSessionWhereInput = {
       userId,
       completedAt: { not: null },
+      sessionType: { not: 'DIAGNOSTIC' },
     };
 
     if (part) where.part = part;
@@ -393,12 +485,13 @@ export class PracticeService {
   }
 
   async updateUserProgress(userId: string) {
-    // Get last 10 completed sessions for rolling average
+    // Get last 10 completed sessions for rolling average (exclude diagnostics)
     const recentSessions = await this.prisma.practiceSession.findMany({
       where: {
         userId,
         completedAt: { not: null },
         overallBandScore: { not: null },
+        sessionType: { not: 'DIAGNOSTIC' },
       },
       orderBy: { completedAt: 'desc' },
       take: 10,
@@ -500,6 +593,7 @@ export class PracticeService {
           userId,
           completedAt: { not: null },
           overallBandScore: { not: null },
+          sessionType: { not: 'DIAGNOSTIC' },
         },
         orderBy: { completedAt: 'desc' },
         take: 10,
@@ -530,6 +624,7 @@ export class PracticeService {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           },
           overallBandScore: { not: null },
+          sessionType: { not: 'DIAGNOSTIC' },
         },
         orderBy: { completedAt: 'asc' },
         select: {
