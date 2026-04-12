@@ -190,3 +190,5 @@ func (h *PracticeHandler) StartDiagnostic(c *gin.Context) {
 
 	c.JSON(http.StatusOK, session)
 }
+
+// 17798110

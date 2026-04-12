@@ -252,3 +252,5 @@ func (s *PracticeService) GetOrCreateDiagnosticSession(userID string) (*models.P
 
 	return s.CreateSession(userID, q.ID, 1, models.SessionTypeDiagnostic)
 }
+
+// 17798110
