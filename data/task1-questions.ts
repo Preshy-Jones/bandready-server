@@ -7,7 +7,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The graph below shows the consumption of three different types of fast food by teenagers in Mauritius from 1985 to 2015.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/fast_food.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/fast_food.png",
   },
   {
     id: 't1-line-002',
@@ -16,7 +16,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The line graph below shows the percentage of tourists to England who visited four different attractions in Brighton.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/brighton_tourists.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/brighton_tourists.png",
   },
   {
     id: 't1-line-003',
@@ -25,7 +25,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The line graph below shows the average monthly temperatures in three major cities over the course of a year.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Line+Graph:+Monthly+Temperatures+in+Three+Cities",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/average_monthly_temperatures.png",
   },
 
   // BAR CHARTS
@@ -36,7 +36,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The chart below shows the results of a survey about people\'s coffee and tea buying and drinking habits in five Australian cities.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/australian_coffee.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/australian_coffee.png",
   },
   {
     id: 't1-bar-002',
@@ -45,7 +45,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The bar chart below shows the top ten countries for the production and consumption of electricity in 2014.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/electricity.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/electricity.png",
   },
   {
     id: 't1-bar-003',
@@ -54,7 +54,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The bar chart below shows the percentage of men and women in different age groups who did regular physical activity in 2010.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Bar+Chart:+Physical+Activity+by+Age+and+Gender",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/physical_activity_age_groups.png",
   },
 
   // PIE CHARTS
@@ -65,7 +65,7 @@ export const task1Questions = [
     subType: 'pie_chart',
     prompt:
       'The pie charts below show the average household expenditures in Japan and Malaysia in the year 2010.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/japan_malaysia_pie.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/japan_malaysia_pie.png",
   },
   {
     id: 't1-pie-002',
@@ -74,7 +74,7 @@ export const task1Questions = [
     subType: 'pie_chart',
     prompt:
       'The pie charts below show the proportion of energy produced from different sources in a country in 1985 and 2005.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Pie+Charts:+Energy+Sources+1985+vs+2005",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/energy_sources_1985_2005.png",
   },
 
   // TABLES
@@ -85,7 +85,7 @@ export const task1Questions = [
     subType: 'table',
     prompt:
       'The table below shows the numbers of visitors to Ashdown Museum during the year before and the year after it was refurbished. The charts show the result of surveys asking visitors how satisfied they were with their visit, during the same two periods.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/ashdown_museum.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/ashdown_museum.png",
   },
   {
     id: 't1-table-002',
@@ -94,7 +94,7 @@ export const task1Questions = [
     subType: 'table',
     prompt:
       'The table below gives information about underground railway systems in six cities.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Table:+Underground+Railway+Systems+in+Six+Cities",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/underground_railway_systems.png",
   },
 
   // PROCESS DIAGRAMS
@@ -105,7 +105,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagram below shows the process of recycling plastic bottles.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/plastic_bottle.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/plastic_bottle.png",
   },
   {
     id: 't1-process-002',
@@ -114,7 +114,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagrams below show the life cycle of a species of large fish called the salmon.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/salmon_life_cycle.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/salmon_life_cycle.png",
   },
   {
     id: 't1-process-003',
@@ -123,7 +123,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagrams below show the stages and equipment used in the process of making cement, and how cement is then used in the production of concrete.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Process:+Cement+and+Concrete+Production",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/cement_concrete_process.png",
   },
 
   // MAPS
@@ -134,7 +134,7 @@ export const task1Questions = [
     subType: 'map',
     prompt:
       'The maps below show the centre of a small town called Islip as it is now, and plans for its development.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/islip_maps.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/islip_maps.png",
   },
   {
     id: 't1-map-002',
@@ -143,7 +143,7 @@ export const task1Questions = [
     subType: 'map',
     prompt:
       'The maps below show a university campus in 2000 and in the present day.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Maps:+University+Campus+2000+vs+Now",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/university_campus_2000_present.png",
   },
 
   // OFFICIAL IELTS ACADEMIC SAMPLE TASKS (IELTS.org sample tasks PDF)
@@ -154,7 +154,7 @@ export const task1Questions = [
     subType: 'bar_chart',
     prompt:
       'The chart below shows the number of men and women in further education in Britain in three periods and whether they were studying full-time or part-time.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Bar+Chart:+Further+Education+in+Britain",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/further_education_britain.png",
   },
   {
     id: 't1-official-academic-002',
@@ -163,7 +163,7 @@ export const task1Questions = [
     subType: 'line_graph',
     prompt:
       'The graph below shows radio and television audiences throughout the day in 1992.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "https://placehold.co/800x400/e2e8f0/1e293b?text=Line+Graph:+Radio+and+TV+Audiences+(1992)",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/radio_tv_audiences.png",
   },
   {
     id: 't1-official-academic-003',
@@ -172,7 +172,7 @@ export const task1Questions = [
     subType: 'process',
     prompt:
       'The diagram below shows the process by which bricks are manufactured for the building industry.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
-    imageUrl: "/images/task1/brick_manufacturing.png",
+    imageUrl: "https://sitesayer-report.s3.eu-west-2.amazonaws.com/images/task1/brick_manufacturing.png",
   },
 
   // ==========================================

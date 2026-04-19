@@ -19,6 +19,7 @@
     "db:seed:reading": "ts-node prisma/seed-reading.ts",
     "db:seed:demo": "ts-node prisma/demo-seed.ts",
     "db:seed:drills": "ts-node prisma/seed-drills-only.ts",
+    "db:update-task1-images": "ts-node prisma/update-task1-images.ts",
     "otp:recover": "ts-node prisma/recover-unverified-users.ts",
     "postinstall": "prisma generate",
     "test": "jest",

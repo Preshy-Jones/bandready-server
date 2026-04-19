@@ -466,7 +466,7 @@ async function main() {
         examType: ('examType' in q && q.examType === 'GENERAL') ? 'GENERAL' : 'ACADEMIC',
         prompt: q.prompt,
         imageUrl,
-        isActive: true,
+        isActive: 'isActive' in q ? (q as any).isActive : true,
       };
     }),
   });
