@@ -155,6 +155,82 @@ export class AdminService {
     };
   }
 
+  async exportUsers(params: {
+    search?: string;
+    tier?: string;
+    verified?: string;
+    country?: string;
+  }): Promise<string> {
+    const where: Prisma.UserWhereInput = {};
+
+    if (params.search) {
+      where.OR = [
+        { email: { contains: params.search, mode: 'insensitive' } },
+        { fullName: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+    if (params.tier) where.subscriptionTier = params.tier;
+    if (params.verified === 'true') where.isEmailVerified = true;
+    if (params.verified === 'false') where.isEmailVerified = false;
+    if (params.country) where.country = params.country;
+
+    const users = await this.prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        country: true,
+        examType: true,
+        subscriptionTier: true,
+        subscriptionExpiresAt: true,
+        isEmailVerified: true,
+        speakingBalance: true,
+        writingBalance: true,
+        role: true,
+        createdAt: true,
+        _count: { select: { practiceSessions: true, essaySubmissions: true } },
+      },
+    });
+
+    const esc = (val: string | number | boolean | null | undefined): string => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      return str.includes(',') || str.includes('"') || str.includes('\n')
+        ? `"${str.replace(/"/g, '""')}"`
+        : str;
+    };
+
+    const headers = [
+      'ID', 'Full Name', 'Email', 'Country', 'Exam Type',
+      'Subscription', 'Subscription Expires', 'Email Verified',
+      'Speaking Balance', 'Writing Balance', 'Role',
+      'Speaking Sessions', 'Essay Submissions', 'Joined At',
+    ].join(',');
+
+    const rows = users.map((u) =>
+      [
+        esc(u.id),
+        esc(u.fullName),
+        esc(u.email),
+        esc(u.country),
+        esc(u.examType),
+        esc(u.subscriptionTier),
+        esc(u.subscriptionExpiresAt?.toISOString()),
+        esc(u.isEmailVerified),
+        esc(u.speakingBalance),
+        esc(u.writingBalance),
+        esc(u.role),
+        esc(u._count.practiceSessions),
+        esc(u._count.essaySubmissions),
+        esc(u.createdAt.toISOString()),
+      ].join(','),
+    );
+
+    return [headers, ...rows].join('\n');
+  }
+
   async getUserDetail(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

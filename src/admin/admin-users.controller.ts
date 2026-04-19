@@ -1,4 +1,5 @@
-import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
@@ -25,6 +26,21 @@ export class AdminUsersController {
       verified,
       country,
     });
+  }
+
+  @Get('export')
+  async exportUsers(
+    @Query('search') search?: string,
+    @Query('tier') tier?: string,
+    @Query('verified') verified?: string,
+    @Query('country') country?: string,
+    @Res() res?: Response,
+  ) {
+    const csv = await this.adminService.exportUsers({ search, tier, verified, country });
+    const filename = `users-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
   }
 
   @Get(':id')
