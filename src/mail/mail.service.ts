@@ -258,6 +258,54 @@ export class MailService {
     }
   }
 
+  async sendToUser(opts: {
+    userId: string;
+    subject: string;
+    body: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+  }): Promise<boolean> {
+    const { userId, subject, body, ctaLabel, ctaUrl } = opts;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true },
+    });
+
+    if (!user) {
+      this.logger.warn(`sendToUser: user ${userId} not found`);
+      return false;
+    }
+
+    const firstName = user.fullName?.split(' ')[0] || 'there';
+    const html = baseEmail(`
+      <h2 style="color: #2E3192;">${subject}</h2>
+      <p>Hi ${firstName},</p>
+      ${textToParagraphs(body)}
+      ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
+    `);
+
+    try {
+      const result = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: user.email,
+        subject,
+        html,
+      });
+
+      if (result.error) {
+        this.logger.error(`sendToUser failed for ${user.email}: ${result.error.message}`);
+        return false;
+      }
+
+      this.logger.log(`sendToUser: sent "${subject}" to ${user.email}`);
+      return true;
+    } catch (err) {
+      this.logger.error(`sendToUser: exception for ${user.email}`, err);
+      return false;
+    }
+  }
+
   async getBroadcastRecipientCount(audience: 'all' | 'free' | 'premium'): Promise<number> {
     const where = this.buildAudienceWhere(audience);
     return this.prisma.user.count({ where });
