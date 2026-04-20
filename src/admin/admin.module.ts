@@ -4,6 +4,7 @@ import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminContentController } from './admin-content.controller';
 import { AdminPaymentsController } from './admin-payments.controller';
+import { AdminMailController } from './admin-mail.controller';
 
 @Module({
   controllers: [
@@ -11,6 +12,7 @@ import { AdminPaymentsController } from './admin-payments.controller';
     AdminUsersController,
     AdminContentController,
     AdminPaymentsController,
+    AdminMailController,
   ],
   providers: [AdminService],
 })

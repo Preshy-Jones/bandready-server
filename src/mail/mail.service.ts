@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { baseEmail, ctaButton, textToParagraphs } from './mail.templates';
 
 @Injectable()
 export class MailService {
@@ -8,7 +10,10 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
   private fromEmail: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
     this.resend = new Resend(resendApiKey || 're_mock_key');
     
@@ -251,6 +256,78 @@ export class MailService {
       this.logger.error(`Failed to send ${daysLeft}-day expiry reminder to ${email}`, error);
       return false;
     }
+  }
+
+  async getBroadcastRecipientCount(audience: 'all' | 'free' | 'premium'): Promise<number> {
+    const where = this.buildAudienceWhere(audience);
+    return this.prisma.user.count({ where });
+  }
+
+  async sendBroadcast(opts: {
+    subject: string;
+    body: string;
+    audience: 'all' | 'free' | 'premium';
+    ctaLabel?: string;
+    ctaUrl?: string;
+  }): Promise<{ sent: number; failed: number }> {
+    const { subject, body, audience, ctaLabel, ctaUrl } = opts;
+
+    const users = await this.prisma.user.findMany({
+      where: this.buildAudienceWhere(audience),
+      select: { email: true, fullName: true },
+    });
+
+    if (users.length === 0) {
+      return { sent: 0, failed: 0 };
+    }
+
+    const html = baseEmail(`
+      <h2 style="color: #2E3192;">${subject}</h2>
+      ${textToParagraphs(body)}
+      ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
+    `);
+
+    const messages = users.map((u) => ({
+      from: this.fromEmail,
+      to: u.email,
+      subject,
+      html,
+    }));
+
+    // Resend batch accepts max 100 per call — chunk if needed
+    const CHUNK = 100;
+    let sent = 0;
+    let failed = 0;
+
+    for (let i = 0; i < messages.length; i += CHUNK) {
+      const chunk = messages.slice(i, i + CHUNK);
+      try {
+        const result = await this.resend.batch.send(chunk);
+        if (result.error) {
+          this.logger.error(`Broadcast batch error: ${result.error.message}`);
+          failed += chunk.length;
+        } else {
+          sent += chunk.length;
+        }
+      } catch (err) {
+        this.logger.error('Broadcast batch send failed', err);
+        failed += chunk.length;
+      }
+    }
+
+    this.logger.log(`Broadcast "${subject}" → audience=${audience}: sent=${sent}, failed=${failed}`);
+    return { sent, failed };
+  }
+
+  private buildAudienceWhere(audience: 'all' | 'free' | 'premium') {
+    const base = { isEmailVerified: true, role: 'USER' as const };
+    if (audience === 'free') {
+      return { ...base, subscriptionTier: 'none' };
+    }
+    if (audience === 'premium') {
+      return { ...base, subscriptionTier: { not: 'none' } };
+    }
+    return base;
   }
 
   async sendWaitlistConfirmation(email: string, firstName?: string | null): Promise<boolean> {
