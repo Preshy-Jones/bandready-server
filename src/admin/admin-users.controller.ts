@@ -30,11 +30,11 @@ export class AdminUsersController {
 
   @Get('export')
   async exportUsers(
+    @Res() res: Response,
     @Query('search') search?: string,
     @Query('tier') tier?: string,
     @Query('verified') verified?: string,
     @Query('country') country?: string,
-    @Res() res?: Response,
   ) {
     const csv = await this.adminService.exportUsers({ search, tier, verified, country });
     const filename = `users-${new Date().toISOString().split('T')[0]}.csv`;
