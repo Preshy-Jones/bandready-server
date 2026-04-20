@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { baseEmail, ctaButton, textToParagraphs } from './mail.templates';
+import { baseEmail, ctaButton, textToParagraphs, infoBox, otpBlock, emailH2, emailP } from './mail.templates';
 
 @Injectable()
 export class MailService {
@@ -42,21 +42,14 @@ export class MailService {
         from: this.fromEmail,
         to: email,
         subject: 'Reset your BandReady password',
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2E3192;">Reset your password</h2>
-            <p>Hi ${firstName},</p>
-            <p>We received a request to reset your BandReady password.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
-            </div>
-            <p style="color: #64748B; font-size: 14px;">This link will expire in 1 hour.</p>
-            <p style="color: #64748B; font-size: 14px;">If you did not request this, you can safely ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
-            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
-            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
-          </div>
-        `,
+        html: baseEmail(`
+          ${emailH2('Reset your password')}
+          ${emailP(`Hi ${firstName},`)}
+          ${emailP('We received a request to reset your BandReady password.')}
+          ${ctaButton(resetUrl, 'Reset Password')}
+          ${emailP('This link will expire in 1 hour.')}
+          ${emailP('If you did not request this, you can safely ignore this email.')}
+        `),
       });
 
       if (response.error) {
@@ -90,24 +83,15 @@ export class MailService {
         from: this.fromEmail,
         to: email,
         subject: 'Verify your BandReady account',
-        html: `
-          <div style="font-family: sans-serif; max-w-md; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2E3192;">Welcome to BandReady!</h2>
-            <p>Hi ${firstName},</p>
-            <p>Thanks for signing up. Please use the verification code below to complete your registration:</p>
-            
-            <div style="background-color: #F1F5F9; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1E293B;">${otp}</span>
-            </div>
-            
-            <p style="color: #64748B; font-size: 14px;">This code will expire in 15 minutes.</p>
-            <p style="color: #64748B; font-size: 14px;">If you already left the verification page, just log in again and we will send you a fresh code.</p>
-            <p>If you didn't request this, you can safely ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
-            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
-            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
-          </div>
-        `,
+        html: baseEmail(`
+          ${emailH2('Welcome to BandReady!')}
+          ${emailP(`Hi ${firstName},`)}
+          ${emailP('Thanks for signing up. Please use the verification code below to complete your registration:')}
+          ${otpBlock(otp)}
+          ${emailP('This code will expire in 15 minutes.')}
+          ${emailP('If you already left the verification page, just log in again and we will send you a fresh code.')}
+          ${emailP("If you didn't request this, you can safely ignore this email.")}
+        `),
       });
 
       if (response.error) {
@@ -164,27 +148,14 @@ export class MailService {
         from: this.fromEmail,
         to: email,
         subject,
-        html: `
-          <div style="font-family: sans-serif; max-w-md; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2E3192;">${messageHeadline}</h2>
-            <p>Hi ${firstName},</p>
-            <p>${body}</p>
-            
-            <div style="background-color: #F1F5F9; border-left: 4px solid #2E3192; padding: 15px; margin: 25px 0;">
-              <p style="margin: 0; color: #1E293B; font-weight: 500;">${intensityHighlight}</p>
-            </div>
-            
-            <p>Log in to BandReady today and stay on track with your goals.</p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://bandready.app/dashboard" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
-            </div>
-            
-            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
-            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
-            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
-          </div>
-        `,
+        html: baseEmail(`
+          ${emailH2(messageHeadline)}
+          ${emailP(`Hi ${firstName},`)}
+          ${emailP(body)}
+          ${infoBox(intensityHighlight)}
+          ${emailP('Log in to BandReady today and stay on track with your goals.')}
+          ${ctaButton('https://bandready.app/dashboard', 'Go to Dashboard')}
+        `),
       });
 
       this.logger.log(`Successfully sent ${daysLeft}-day reminder email to ${email}. ID: ${data.data?.id}`);
@@ -229,25 +200,13 @@ export class MailService {
         from: this.fromEmail,
         to: email,
         subject,
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2E3192;">${messageHeadline}</h2>
-            <p>Hi ${firstName},</p>
-            <p>${body}</p>
-
-            <div style="background-color: #F1F5F9; border-left: 4px solid #2E3192; padding: 15px; margin: 25px 0;">
-              <p style="margin: 0; color: #1E293B; font-weight: 500;">Don't lose your progress momentum — renew and keep practising every day.</p>
-            </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://bandready.app/pricing" style="background-color: #2E3192; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">${ctaText}</a>
-            </div>
-
-            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
-            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
-            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
-          </div>
-        `,
+        html: baseEmail(`
+          ${emailH2(messageHeadline)}
+          ${emailP(`Hi ${firstName},`)}
+          ${emailP(body)}
+          ${infoBox("Don't lose your progress momentum — renew and keep practising every day.")}
+          ${ctaButton('https://bandready.app/pricing', ctaText)}
+        `),
       });
 
       this.logger.log(`Successfully sent ${daysLeft}-day expiry reminder to ${email}. ID: ${data.data?.id}`);
@@ -279,8 +238,8 @@ export class MailService {
 
     const firstName = user.fullName?.split(' ')[0] || 'there';
     const html = baseEmail(`
-      <h2 style="color: #2E3192;">${subject}</h2>
-      <p>Hi ${firstName},</p>
+      ${emailH2(subject)}
+      ${emailP(`Hi ${firstName},`)}
       ${textToParagraphs(body)}
       ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
     `);
@@ -330,7 +289,7 @@ export class MailService {
     }
 
     const html = baseEmail(`
-      <h2 style="color: #2E3192;">${subject}</h2>
+      ${emailH2(subject)}
       ${textToParagraphs(body)}
       ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
     `);
@@ -393,19 +352,12 @@ export class MailService {
         from: this.fromEmail,
         to: email,
         subject: 'You are on the Waitlist!',
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2E3192;">You're in line!</h2>
-            <p>Hi ${nameStr},</p>
-            <p>Thanks for joining the waitlist for BandReady. We're currently hard at work building the most advanced AI-powered IELTS platform to help you achieve your target band score with ease.</p>
-
-            <p>We'll notify you as soon as early access opens.</p>
-
-            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
-            <p style="color: #64748B; font-size: 14px; text-align: center;">Need help? Contact us at <a href="mailto:support@bandready.app" style="color: #2E3192;">support@bandready.app</a></p>
-            <p style="color: #64748B; font-size: 12px; text-align: center;">Team BandReady</p>
-          </div>
-        `,
+        html: baseEmail(`
+          ${emailH2("You're in line!")}
+          ${emailP(`Hi ${nameStr},`)}
+          ${emailP("Thanks for joining the waitlist for BandReady. We're currently hard at work building the most advanced AI-powered IELTS platform to help you achieve your target band score with ease.")}
+          ${emailP("We'll notify you as soon as early access opens.")}
+        `),
       });
 
       this.logger.log(`Successfully sent Waitlist confirmation email to ${email}. ID: ${data.data?.id}`);
