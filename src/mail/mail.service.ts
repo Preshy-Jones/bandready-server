@@ -217,6 +217,67 @@ export class MailService {
     }
   }
 
+  async sendPremiumWelcome(email: string, fullName: string | null, expiresAt: Date): Promise<void> {
+    const firstName = fullName?.split(' ')[0] || 'there';
+    const expiryStr = expiresAt.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    if (!this.configService.get<string>('RESEND_API_KEY')) {
+      this.logger.warn(`[DEV MODE] Would send premium welcome to ${email}`);
+      return;
+    }
+
+    try {
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: "You're now a BandReady Premium member!",
+        html: baseEmail(`
+          ${emailH2('Welcome to Premium!')}
+          ${emailP(`Hi ${firstName},`)}
+          ${emailP('Your payment was successful. You now have full access to BandReady Premium — unlimited speaking and writing practice sessions, AI-powered feedback, and everything you need to hit your target band score.')}
+          ${infoBox(`Your Premium subscription is active until ${expiryStr}.`)}
+          ${emailP('Start practising right away and make the most of your membership.')}
+          ${ctaButton('https://bandready.app/practice', 'Start Practising')}
+        `),
+      });
+      this.logger.log(`Sent premium welcome to ${email}`);
+    } catch (err) {
+      this.logger.error(`Failed to send premium welcome to ${email}`, err);
+    }
+  }
+
+  async sendPackConfirmation(email: string, fullName: string | null, sessionCount = 0, writingCount = 0): Promise<void> {
+    const firstName = fullName?.split(' ')[0] || 'there';
+    const packSummary = [
+      sessionCount ? `${sessionCount} speaking session${sessionCount !== 1 ? 's' : ''}` : null,
+      writingCount ? `${writingCount} writing session${writingCount !== 1 ? 's' : ''}` : null,
+    ].filter(Boolean).join(' + ');
+
+    if (!this.configService.get<string>('RESEND_API_KEY')) {
+      this.logger.warn(`[DEV MODE] Would send pack confirmation to ${email}`);
+      return;
+    }
+
+    try {
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: 'Your BandReady sessions are ready!',
+        html: baseEmail(`
+          ${emailH2('Your pack is activated!')}
+          ${emailP(`Hi ${firstName},`)}
+          ${emailP('Thanks for your purchase! Your sessions have been added to your account and are ready to use right now.')}
+          ${infoBox(`Added to your account: ${packSummary}`)}
+          ${emailP('Jump straight in and put them to use.')}
+          ${ctaButton('https://bandready.app/practice', 'Start Practising')}
+        `),
+      });
+      this.logger.log(`Sent pack confirmation to ${email}`);
+    } catch (err) {
+      this.logger.error(`Failed to send pack confirmation to ${email}`, err);
+    }
+  }
+
   async sendToUser(opts: {
     userId: string;
     subject: string;
@@ -273,14 +334,19 @@ export class MailService {
   async sendBroadcast(opts: {
     subject: string;
     body: string;
-    audience: 'all' | 'free' | 'premium';
+    audience?: 'all' | 'free' | 'premium';
+    userIds?: string[];
     ctaLabel?: string;
     ctaUrl?: string;
   }): Promise<{ sent: number; failed: number }> {
-    const { subject, body, audience, ctaLabel, ctaUrl } = opts;
+    const { subject, body, audience, userIds, ctaLabel, ctaUrl } = opts;
+
+    const where = userIds?.length
+      ? { id: { in: userIds }, isEmailVerified: true }
+      : this.buildAudienceWhere(audience ?? 'all');
 
     const users = await this.prisma.user.findMany({
-      where: this.buildAudienceWhere(audience),
+      where,
       select: { email: true, fullName: true },
     });
 

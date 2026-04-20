@@ -12,11 +12,15 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
 import { Polar } from '@polar-sh/sdk';
 import { Webhook } from 'standardwebhooks';
+import { MailService } from '../mail/mail.service';
 
 type PlanKey = string;
 type PaymentProvider = 'paystack' | 'paddle' | 'polar';
 type GlobalProvider = 'paddle' | 'polar';
 type PaymentModel = 'packs' | 'subscriptions';
+type PaymentEmailPayload =
+  | { type: 'pack'; sessionCount: number; writingCount: number }
+  | { type: 'subscription'; expiresAt: Date };
 
 interface RegionEntry {
   provider: 'paystack' | 'global';
@@ -93,6 +97,7 @@ export class PaymentsService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
   ) {
     // Paystack plans (NGN Kobo) — Session packs only, Nigeria only
     // Sessions never expire. drillValidityDays = how long unlimited drills last from purchase.
@@ -450,6 +455,8 @@ export class PaymentsService {
     }
 
     const paymentDate = verification.paid_at ? new Date(verification.paid_at) : new Date();
+    const emailRef = { payload: null as PaymentEmailPayload | null };
+
     await this.prisma.$transaction(async (tx) => {
       const existingTransaction = await tx.paymentTransaction.findUnique({
         where: { reference: verification.reference },
@@ -488,6 +495,7 @@ export class PaymentsService {
 
       if (sessionCount || writingCount) {
         await this.applyPackPurchase(tx, requestedUserId, configuredPlan);
+        emailRef.payload = { type: 'pack', sessionCount: sessionCount || 0, writingCount: writingCount || 0 };
         // Update paystackCustomerCode separately
         if (verification.customer?.customer_code) {
           await tx.user.update({
@@ -504,6 +512,7 @@ export class PaymentsService {
             paystackCustomerCode: verification.customer?.customer_code || undefined,
           },
         });
+        emailRef.payload = { type: 'subscription', expiresAt: subscriptionEnd };
       }
 
       await tx.paymentTransaction.upsert({
@@ -542,6 +551,22 @@ export class PaymentsService {
         },
       });
     });
+
+    if (emailRef.payload) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: requestedUserId },
+        select: { email: true, fullName: true },
+      });
+      if (user) {
+        if (emailRef.payload.type === 'pack') {
+          this.mailService.sendPackConfirmation(user.email, user.fullName, emailRef.payload.sessionCount, emailRef.payload.writingCount)
+            .catch((e) => this.logger.error('Pack confirmation email failed', e));
+        } else {
+          this.mailService.sendPremiumWelcome(user.email, user.fullName, emailRef.payload.expiresAt)
+            .catch((e) => this.logger.error('Premium welcome email failed', e));
+        }
+      }
+    }
   }
 
   async applySubscriptionPurchase(
@@ -793,6 +818,8 @@ export class PaymentsService {
     const model = customData?.model || 'subscriptions';
     const paymentDate = event.data.billed_at ? new Date(event.data.billed_at) : new Date();
 
+    const paddleEmailRef = { payload: null as PaymentEmailPayload | null };
+
     await this.prisma.$transaction(async (tx) => {
       // Check if we already processed this
       const existingTransaction = await tx.paymentTransaction.findUnique({
@@ -823,7 +850,8 @@ export class PaymentsService {
         if (packConfig) {
           await this.applyPackPurchase(tx, userId, packConfig);
           baseAmountCents = packConfig.amountCents;
-          
+          paddleEmailRef.payload = { type: 'pack', sessionCount: packConfig.sessionCount || 0, writingCount: packConfig.writingCount || 0 };
+
           if (event.data?.customer_id) {
             await tx.user.update({
               where: { id: userId },
@@ -835,16 +863,17 @@ export class PaymentsService {
         const configuredPlan = this.paddlePlanConfig[plan] || this.paddlePlanConfig.monthly;
         baseAmountCents = configuredPlan.amountCents;
         const subResult = await this.applySubscriptionPurchase(
-          tx, 
-          userId, 
-          configuredPlan.durationDays, 
-          paymentDate, 
-          event.data?.customer_id, 
+          tx,
+          userId,
+          configuredPlan.durationDays,
+          paymentDate,
+          event.data?.customer_id,
           'paddle'
         );
         if (subResult) {
             subscriptionStartsAt = subResult.subscriptionStart;
             subscriptionEndsAt = subResult.subscriptionEnd;
+            paddleEmailRef.payload = { type: 'subscription', expiresAt: subResult.subscriptionEnd };
         }
       }
 
@@ -894,6 +923,22 @@ export class PaymentsService {
         },
       });
     });
+
+    if (paddleEmailRef.payload) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, fullName: true },
+      });
+      if (user) {
+        if (paddleEmailRef.payload.type === 'pack') {
+          this.mailService.sendPackConfirmation(user.email, user.fullName, paddleEmailRef.payload.sessionCount, paddleEmailRef.payload.writingCount)
+            .catch((e) => this.logger.error('Paddle pack confirmation email failed', e));
+        } else {
+          this.mailService.sendPremiumWelcome(user.email, user.fullName, paddleEmailRef.payload.expiresAt)
+            .catch((e) => this.logger.error('Paddle premium welcome email failed', e));
+        }
+      }
+    }
 
     return { received: true };
   }
@@ -1090,6 +1135,8 @@ export class PaymentsService {
     const model = metadata?.model || 'packs';
     const paymentDate = new Date(); // Polar paid time not clearly in root event data, fallback
 
+    const polarEmailRef = { payload: null as PaymentEmailPayload | null };
+
     await this.prisma.$transaction(async (tx) => {
       // Check idempotency
       const existingTransaction = await tx.paymentTransaction.findUnique({
@@ -1120,7 +1167,8 @@ export class PaymentsService {
         if (packConfig) {
           await this.applyPackPurchase(tx, userId, packConfig);
           baseAmountCents = packConfig.amountCents;
-          
+          polarEmailRef.payload = { type: 'pack', sessionCount: packConfig.sessionCount || 0, writingCount: packConfig.writingCount || 0 };
+
           if (event.data?.customer_id) {
             await tx.user.update({
               where: { id: userId },
@@ -1128,22 +1176,23 @@ export class PaymentsService {
             });
           }
         } else {
-             this.logger.warn(`Polar webhook: unknown pack tier/plan: ${packTier}/${plan}`);
+          this.logger.warn(`Polar webhook: unknown pack tier/plan: ${packTier}/${plan}`);
         }
       } else {
         const configuredPlan = this.paddlePlanConfig[plan] || this.paddlePlanConfig.monthly; // reuse
         baseAmountCents = configuredPlan.amountCents;
         const subResult = await this.applySubscriptionPurchase(
-          tx, 
-          userId, 
-          configuredPlan.durationDays, 
-          paymentDate, 
-          event.data?.customer_id, 
+          tx,
+          userId,
+          configuredPlan.durationDays,
+          paymentDate,
+          event.data?.customer_id,
           'polar'
         );
         if (subResult) {
             subscriptionStartsAt = subResult.subscriptionStart;
             subscriptionEndsAt = subResult.subscriptionEnd;
+            polarEmailRef.payload = { type: 'subscription', expiresAt: subResult.subscriptionEnd };
         }
       }
 
@@ -1189,6 +1238,22 @@ export class PaymentsService {
         },
       });
     });
+
+    if (polarEmailRef.payload) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, fullName: true },
+      });
+      if (user) {
+        if (polarEmailRef.payload.type === 'pack') {
+          this.mailService.sendPackConfirmation(user.email, user.fullName, polarEmailRef.payload.sessionCount, polarEmailRef.payload.writingCount)
+            .catch((e) => this.logger.error('Polar pack confirmation email failed', e));
+        } else {
+          this.mailService.sendPremiumWelcome(user.email, user.fullName, polarEmailRef.payload.expiresAt)
+            .catch((e) => this.logger.error('Polar premium welcome email failed', e));
+        }
+      }
+    }
 
     return { received: true };
   }

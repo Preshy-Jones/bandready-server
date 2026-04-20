@@ -45,7 +45,8 @@ export class AdminMailController {
     body: {
       subject: string;
       body: string;
-      audience: Audience;
+      audience?: Audience;
+      userIds?: string[];
       ctaLabel?: string;
       ctaUrl?: string;
     },
@@ -54,6 +55,7 @@ export class AdminMailController {
       subject: body.subject,
       body: body.body,
       audience: body.audience,
+      userIds: body.userIds,
       ctaLabel: body.ctaLabel,
       ctaUrl: body.ctaUrl,
     });

@@ -85,6 +85,7 @@ export class UsersService {
         fullName: googleUser.fullName,
         googleId: googleUser.googleId,
         avatarUrl: googleUser.avatarUrl,
+        isEmailVerified: true, // Google has already verified the email
       },
     });
   }
@@ -95,6 +96,7 @@ export class UsersService {
       data: {
         googleId,
         avatarUrl: avatarUrl || undefined,
+        isEmailVerified: true, // linking Google confirms the email
       },
     });
   }
