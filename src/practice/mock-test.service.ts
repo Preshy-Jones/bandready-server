@@ -68,7 +68,7 @@ export class MockTestService {
     });
 
     // STEP 3: Create first session (Part 1, Question 1)
-    await this.usersService.incrementDailySession(userId, 'speaking');
+    await this.usersService.deductCredits(userId, 'speaking');
     const firstSession = await this.prisma.practiceSession.create({
       data: {
         userId,
@@ -282,7 +282,7 @@ export class MockTestService {
     });
 
     // Create next session with pre-selected question
-    await this.usersService.incrementDailySession(userId, 'speaking');
+    await this.usersService.deductCredits(userId, 'speaking');
 
     const nextSession = await this.prisma.practiceSession.create({
       data: {

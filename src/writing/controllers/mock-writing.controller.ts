@@ -39,19 +39,19 @@ export class MockWritingController {
     @CurrentUser() user: any,
     @Query('examType') examType?: string,
   ) {
-    // Check writing balance (costs 2 credits)
+    // Check credit balance (mock writing costs 4 credits)
     const canStart = await this.usersService.canStartSession(user.id, 'writing');
     if (!canStart) {
       throw new BadRequestException(
-        'Insufficient writing balance. A mock test requires 2 writing credits.',
+        'Insufficient credits. A writing mock test requires 4 credits.',
       );
     }
 
-    // Verify user has at least 2 credits
+    // Verify user has at least 4 credits
     const userRecord = await this.prisma.user.findUnique({
       where: { id: user.id },
       select: {
-        writingBalance: true,
+        creditBalance: true,
         subscriptionTier: true,
         subscriptionExpiresAt: true,
         examType: true,
@@ -62,9 +62,9 @@ export class MockWritingController {
       userRecord?.subscriptionTier === 'premium' &&
       (!userRecord.subscriptionExpiresAt || userRecord.subscriptionExpiresAt > new Date());
 
-    if (!isPremium && (userRecord?.writingBalance ?? 0) < 2) {
+    if (!isPremium && (userRecord?.creditBalance ?? 0) < 4) {
       throw new BadRequestException(
-        'You need at least 2 writing credits for a mock test.',
+        'You need at least 4 credits for a writing mock test.',
       );
     }
 
@@ -97,11 +97,11 @@ export class MockWritingController {
       }),
     ]);
 
-    // Deduct 2 writing credits (inside a transaction for safety)
+    // Deduct 4 credits for writing mock test (inside a transaction for safety)
     if (!isPremium) {
       await this.prisma.user.update({
         where: { id: user.id },
-        data: { writingBalance: { decrement: 2 } },
+        data: { creditBalance: { decrement: 4 } },
       });
     }
 

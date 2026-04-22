@@ -108,11 +108,10 @@ describe('PaymentsService', () => {
       // User exists
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user_1',
-        speakingBalance: 0,
-        writingBalance: 0
+        creditBalance: 0
       });
 
-      // Update user for the pack config (starter pack: 3 session, 5 writing)
+      // Update user for the pack config (starter pack: 25 credits)
       (prismaService.user.update as jest.Mock).mockResolvedValue({});
 
       // Create transaction record

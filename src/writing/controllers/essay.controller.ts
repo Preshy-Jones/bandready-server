@@ -324,8 +324,8 @@ export class EssayController {
       // Update progress
       await this.progressService.updateProgressAfterEssay(userId, submissionId);
 
-      // Deduct session balance
-      await this.usersService.incrementDailySession(userId, 'writing');
+      // Deduct credits
+      await this.usersService.deductCredits(userId, 'writing');
 
       this.logger.log(`Completed assessment for essay ${submissionId}`);
     } catch (error) {

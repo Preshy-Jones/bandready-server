@@ -246,12 +246,9 @@ export class MailService {
     }
   }
 
-  async sendPackConfirmation(email: string, fullName: string | null, sessionCount = 0, writingCount = 0): Promise<void> {
+  async sendPackConfirmation(email: string, fullName: string | null, credits = 0): Promise<void> {
     const firstName = fullName?.split(' ')[0] || 'there';
-    const packSummary = [
-      sessionCount ? `${sessionCount} speaking session${sessionCount !== 1 ? 's' : ''}` : null,
-      writingCount ? `${writingCount} writing session${writingCount !== 1 ? 's' : ''}` : null,
-    ].filter(Boolean).join(' + ');
+    const packSummary = `${credits} credit${credits !== 1 ? 's' : ''}`;
 
     if (!this.configService.get<string>('RESEND_API_KEY')) {
       this.logger.warn(`[DEV MODE] Would send pack confirmation to ${email}`);
@@ -266,7 +263,7 @@ export class MailService {
         html: baseEmail(`
           ${emailH2('Your pack is activated!')}
           ${emailP(`Hi ${firstName},`)}
-          ${emailP('Thanks for your purchase! Your sessions have been added to your account and are ready to use right now.')}
+          ${emailP('Thanks for your purchase! Your credits have been added to your account and are ready to use right now.')}
           ${infoBox(`Added to your account: ${packSummary}`)}
           ${emailP('Jump straight in and put them to use.')}
           ${ctaButton('https://bandready.app/practice', 'Start Practising')}

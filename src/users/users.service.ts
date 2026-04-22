@@ -147,35 +147,22 @@ export class UsersService {
     return result;
   }
 
-  async incrementDailySession(userId: string, sessionType: 'speaking' | 'writing' = 'speaking') {
+  async deductCredits(userId: string, sessionType: 'speaking' | 'writing' = 'speaking') {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
 
-    // Premium users (global subscription) don't consume sessions
+    // Premium users (global subscription) don't consume credits
     if (this.isPremiumActive(user)) {
       return user;
     }
 
-    if (sessionType === 'speaking') {
-      // If user has a session pack, deduct from balance
-      if (user.speakingBalance > 0) {
-        return this.prisma.user.update({
-          where: { id: userId },
-          data: { speakingBalance: { decrement: 1 } },
-        });
-      }
-      // No balance and not premium — should not be reachable since canStartSession blocks access
-      return user;
-    }
+    const cost = sessionType === 'speaking' ? 5 : 2;
 
-    if (sessionType === 'writing') {
-      // Writing has NO free daily sessions. Deduct from balance directly.
-      if (user.writingBalance > 0) {
-        return this.prisma.user.update({
-          where: { id: userId },
-          data: { writingBalance: { decrement: 1 } },
-        });
-      }
+    if (user.creditBalance >= cost) {
+      return this.prisma.user.update({
+        where: { id: userId },
+        data: { creditBalance: { decrement: cost } },
+      });
     }
 
     return user;
@@ -184,8 +171,7 @@ export class UsersService {
   async hasPaidAccess(userId: string): Promise<boolean> {
     const user = await this.syncSubscriptionStatus(userId);
     if (!user) return false;
-    // Returns true if they have any session balances or an active subscription
-    return this.isPremiumActive(user) || user.speakingBalance > 0 || user.writingBalance > 0;
+    return this.isPremiumActive(user) || user.creditBalance > 0;
   }
 
   async hasPurchasedSessionPack(userId: string): Promise<boolean> {
@@ -211,15 +197,9 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: normalizedUser.id } });
     if (!user) return false;
 
-    if (sessionType === 'speaking') {
-      if (this.isPremiumActive(user)) return true;
-      return user.speakingBalance > 0;
-    }
+    if (this.isPremiumActive(user)) return true;
 
-    if (sessionType === 'writing') {
-      return this.isPremiumActive(user) || user.writingBalance > 0;
-    }
-
-    return false;
+    const cost = sessionType === 'speaking' ? 5 : 2;
+    return user.creditBalance >= cost;
   }
 }

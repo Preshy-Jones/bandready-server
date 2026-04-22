@@ -129,8 +129,7 @@ export class AdminService {
           subscriptionTier: true,
           subscriptionExpiresAt: true,
           isEmailVerified: true,
-          speakingBalance: true,
-          writingBalance: true,
+          creditBalance: true,
           role: true,
           createdAt: true,
           _count: {
@@ -186,8 +185,7 @@ export class AdminService {
         subscriptionTier: true,
         subscriptionExpiresAt: true,
         isEmailVerified: true,
-        speakingBalance: true,
-        writingBalance: true,
+        creditBalance: true,
         role: true,
         createdAt: true,
         _count: { select: { practiceSessions: true, essaySubmissions: true } },
@@ -205,7 +203,7 @@ export class AdminService {
     const headers = [
       'ID', 'Full Name', 'Email', 'Country', 'Exam Type',
       'Subscription', 'Subscription Expires', 'Email Verified',
-      'Speaking Balance', 'Writing Balance', 'Role',
+      'Credit Balance', 'Role',
       'Speaking Sessions', 'Essay Submissions', 'Joined At',
     ].join(',');
 
@@ -219,8 +217,7 @@ export class AdminService {
         esc(u.subscriptionTier),
         esc(u.subscriptionExpiresAt?.toISOString()),
         esc(u.isEmailVerified),
-        esc(u.speakingBalance),
-        esc(u.writingBalance),
+        esc(u.creditBalance),
         esc(u.role),
         esc(u._count.practiceSessions),
         esc(u._count.essaySubmissions),

@@ -52,8 +52,7 @@ export class UsersController {
       targetExamDate: user.targetExamDate,
       subscriptionTier: user.subscriptionTier,
       subscriptionExpiresAt: user.subscriptionExpiresAt,
-      speakingBalance: user.speakingBalance,
-      writingBalance: user.writingBalance,
+      creditBalance: user.creditBalance,
       drillsExpireAt: user.drillsExpireAt,
       createdAt: user.createdAt,
     };
