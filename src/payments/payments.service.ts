@@ -19,7 +19,7 @@ type PaymentProvider = 'paystack' | 'paddle' | 'polar';
 type GlobalProvider = 'paddle' | 'polar';
 type PaymentModel = 'packs' | 'subscriptions';
 type PaymentEmailPayload =
-  | { type: 'pack'; sessionCount: number; writingCount: number }
+  | { type: 'pack'; credits: number }
   | { type: 'subscription'; expiresAt: Date };
 
 interface RegionEntry {
@@ -75,22 +75,16 @@ type PaystackVerifyResponse = {
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; sessionCount?: number; writingCount?: number; drillValidityDays?: number }>;
+  private readonly paystackPlanConfig: Record<PlanKey, { amountKobo: number; durationDays: number; credits?: number; drillValidityDays?: number }>;
   private readonly paddlePlanConfig: Record<PlanKey, { amountCents: number; durationDays: number; priceId: string }>;
   private readonly packTiers: Record<string, Record<string, {
-    amountCents: number; sessionCount?: number; writingCount?: number; drillValidityDays?: number;
+    amountCents: number; credits?: number; drillValidityDays?: number;
   }>> = {
     india: {
-      starter:  { amountCents: 299,  sessionCount: 3,  writingCount: 5 },
-      standard: { amountCents: 999,  sessionCount: 12, writingCount: 20, drillValidityDays: 45 },
-      pro:      { amountCents: 1999, sessionCount: 30, writingCount: 50, drillValidityDays: 60 },
-      ultimate: { amountCents: 2999, sessionCount: 60, writingCount: 100, drillValidityDays: 90 },
-    },
-    row: {
-      starter:  { amountCents: 499,  sessionCount: 3,  writingCount: 5 },
-      standard: { amountCents: 1499, sessionCount: 12, writingCount: 20, drillValidityDays: 45 },
-      pro:      { amountCents: 2999, sessionCount: 30, writingCount: 50, drillValidityDays: 60 },
-      ultimate: { amountCents: 4999, sessionCount: 60, writingCount: 100, drillValidityDays: 90 },
+      starter:  { amountCents: 299,  credits: 25 },
+      standard: { amountCents: 999,  credits: 100, drillValidityDays: 45 },
+      pro:      { amountCents: 1999, credits: 250, drillValidityDays: 60 },
+      ultimate: { amountCents: 2999, credits: 500, drillValidityDays: 90 },
     },
   };
 
@@ -102,21 +96,18 @@ export class PaymentsService {
     // Paystack plans (NGN Kobo) — Session packs only, Nigeria only
     // Sessions never expire. drillValidityDays = how long unlimited drills last from purchase.
     this.paystackPlanConfig = {
-      starter: { amountKobo: 50000, durationDays: 0, sessionCount: 3, writingCount: 5 },
-      standard: { amountKobo: 200000, durationDays: 0, sessionCount: 12, writingCount: 20, drillValidityDays: 45 },
-      pro: { amountKobo: 550000, durationDays: 0, sessionCount: 30, writingCount: 50, drillValidityDays: 60 },
-      ultimate: { amountKobo: 800000, durationDays: 0, sessionCount: 60, writingCount: 100, drillValidityDays: 90 },
+      starter:  { amountKobo: 75000,  durationDays: 0, credits: 25 },
+      standard: { amountKobo: 200000, durationDays: 0, credits: 100, drillValidityDays: 45 },
+      pro:      { amountKobo: 550000, durationDays: 0, credits: 250, drillValidityDays: 60 },
+      ultimate: { amountKobo: 900000, durationDays: 0, credits: 500, drillValidityDays: 90 },
     };
 
-    // Paddle plans (USD Cents)
+    // Paddle plans (USD Cents) — ROW subscriptions only (4 tiers)
     this.paddlePlanConfig = {
-      // Rest of World (ROW)
-      monthly: { amountCents: 999, durationDays: 30, priceId: this.configService.get('PADDLE_MONTHLY_PRICE_ID') || '' },
-      yearly: { amountCents: 9999, durationDays: 365, priceId: this.configService.get('PADDLE_YEARLY_PRICE_ID') || '' },
-
-      // South Asia
-      monthly_sa: { amountCents: 499, durationDays: 30, priceId: this.configService.get('PADDLE_SA_MONTHLY_PRICE_ID') || '' },
-      yearly_sa: { amountCents: 4999, durationDays: 365, priceId: this.configService.get('PADDLE_SA_YEARLY_PRICE_ID') || '' },
+      monthly:   { amountCents: 999,  durationDays: 30,  priceId: this.configService.get('PADDLE_MONTHLY_PRICE_ID') || '' },
+      quarterly: { amountCents: 2399, durationDays: 90,  priceId: this.configService.get('PADDLE_QUARTERLY_PRICE_ID') || '' },
+      biannual:  { amountCents: 4199, durationDays: 180, priceId: this.configService.get('PADDLE_BIANNUAL_PRICE_ID') || '' },
+      yearly:    { amountCents: 7199, durationDays: 365, priceId: this.configService.get('PADDLE_YEARLY_PRICE_ID') || '' },
     };
   }
 
@@ -331,7 +322,7 @@ export class PaymentsService {
 
     const updatedUser = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { subscriptionTier: true, subscriptionExpiresAt: true, speakingBalance: true, writingBalance: true },
+      select: { subscriptionTier: true, subscriptionExpiresAt: true, creditBalance: true },
     });
 
     return {
@@ -339,8 +330,7 @@ export class PaymentsService {
       status: 'success',
       subscriptionTier: updatedUser?.subscriptionTier || 'none',
       subscriptionExpiresAt: updatedUser?.subscriptionExpiresAt || null,
-      speakingBalance: updatedUser?.speakingBalance || 0,
-      writingBalance: updatedUser?.writingBalance || 0,
+      creditBalance: updatedUser?.creditBalance || 0,
     };
   }
 
@@ -408,7 +398,7 @@ export class PaymentsService {
   private async applyPackPurchase(
     tx: Prisma.TransactionClient,
     userId: string,
-    packConfig: { sessionCount?: number; writingCount?: number; drillValidityDays?: number },
+    packConfig: { credits?: number; drillValidityDays?: number },
   ) {
     let drillsExpireAt: Date | undefined;
     if (packConfig.drillValidityDays) {
@@ -426,8 +416,7 @@ export class PaymentsService {
     await tx.user.update({
       where: { id: userId },
       data: {
-        speakingBalance: packConfig.sessionCount ? { increment: packConfig.sessionCount } : undefined,
-        writingBalance: packConfig.writingCount ? { increment: packConfig.writingCount } : undefined,
+        creditBalance: packConfig.credits ? { increment: packConfig.credits } : undefined,
         drillsExpireAt: drillsExpireAt || undefined,
       },
     });
@@ -490,12 +479,11 @@ export class PaymentsService {
       const subscriptionEnd = new Date(subscriptionStart);
       subscriptionEnd.setDate(subscriptionEnd.getDate() + configuredPlan.durationDays);
 
-      const sessionCount = configuredPlan.sessionCount;
-      const writingCount = configuredPlan.writingCount;
+      const credits = configuredPlan.credits;
 
-      if (sessionCount || writingCount) {
+      if (credits) {
         await this.applyPackPurchase(tx, requestedUserId, configuredPlan);
-        emailRef.payload = { type: 'pack', sessionCount: sessionCount || 0, writingCount: writingCount || 0 };
+        emailRef.payload = { type: 'pack', credits };
         // Update paystackCustomerCode separately
         if (verification.customer?.customer_code) {
           await tx.user.update({
@@ -559,7 +547,7 @@ export class PaymentsService {
       });
       if (user) {
         if (emailRef.payload.type === 'pack') {
-          this.mailService.sendPackConfirmation(user.email, user.fullName, emailRef.payload.sessionCount, emailRef.payload.writingCount)
+          this.mailService.sendPackConfirmation(user.email, user.fullName, emailRef.payload.credits)
             .catch((e) => this.logger.error('Pack confirmation email failed', e));
         } else {
           this.mailService.sendPremiumWelcome(user.email, user.fullName, emailRef.payload.expiresAt)
@@ -850,7 +838,7 @@ export class PaymentsService {
         if (packConfig) {
           await this.applyPackPurchase(tx, userId, packConfig);
           baseAmountCents = packConfig.amountCents;
-          paddleEmailRef.payload = { type: 'pack', sessionCount: packConfig.sessionCount || 0, writingCount: packConfig.writingCount || 0 };
+          paddleEmailRef.payload = { type: 'pack', credits: packConfig.credits || 0 };
 
           if (event.data?.customer_id) {
             await tx.user.update({
@@ -931,7 +919,7 @@ export class PaymentsService {
       });
       if (user) {
         if (paddleEmailRef.payload.type === 'pack') {
-          this.mailService.sendPackConfirmation(user.email, user.fullName, paddleEmailRef.payload.sessionCount, paddleEmailRef.payload.writingCount)
+          this.mailService.sendPackConfirmation(user.email, user.fullName, paddleEmailRef.payload.credits)
             .catch((e) => this.logger.error('Paddle pack confirmation email failed', e));
         } else {
           this.mailService.sendPremiumWelcome(user.email, user.fullName, paddleEmailRef.payload.expiresAt)
@@ -1001,10 +989,7 @@ export class PaymentsService {
         throw new BadRequestException(`Invalid subscription plan "${plan}"`);
       }
       
-      let regionPrefix = plan.includes('sa') ? 'SA' : 'ROW';
-      let planSuffix = plan.includes('monthly') ? 'MONTHLY' : 'YEARLY';
-      
-      const envKey = `POLAR_SUB_${regionPrefix}_${planSuffix}`;
+      const envKey = `POLAR_SUB_ROW_${plan.toUpperCase()}`;
       polarProductId = this.configService.get<string>(envKey) || '';
       amountCents = subConfig.amountCents;
       customData.subscriptionDurationDays = subConfig.durationDays;
@@ -1167,7 +1152,7 @@ export class PaymentsService {
         if (packConfig) {
           await this.applyPackPurchase(tx, userId, packConfig);
           baseAmountCents = packConfig.amountCents;
-          polarEmailRef.payload = { type: 'pack', sessionCount: packConfig.sessionCount || 0, writingCount: packConfig.writingCount || 0 };
+          polarEmailRef.payload = { type: 'pack', credits: packConfig.credits || 0 };
 
           if (event.data?.customer_id) {
             await tx.user.update({
@@ -1246,7 +1231,7 @@ export class PaymentsService {
       });
       if (user) {
         if (polarEmailRef.payload.type === 'pack') {
-          this.mailService.sendPackConfirmation(user.email, user.fullName, polarEmailRef.payload.sessionCount, polarEmailRef.payload.writingCount)
+          this.mailService.sendPackConfirmation(user.email, user.fullName, polarEmailRef.payload.credits)
             .catch((e) => this.logger.error('Polar pack confirmation email failed', e));
         } else {
           this.mailService.sendPremiumWelcome(user.email, user.fullName, polarEmailRef.payload.expiresAt)

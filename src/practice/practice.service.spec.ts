@@ -84,7 +84,7 @@ describe('PracticeService', () => {
       (prismaService.practiceSession.findFirst as jest.Mock).mockResolvedValue(null);
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user_1',
-        speakingBalance: 5,
+        creditBalance: 25,
         subscriptionTier: 'free'
       });
       const createdSession = { id: 'new_session_1' };
@@ -95,7 +95,7 @@ describe('PracticeService', () => {
       expect(res).toEqual(createdSession);
       expect(prismaService.user.update).toHaveBeenCalledWith({
         where: { id: 'user_1' },
-        data: { speakingBalance: { decrement: 1 } },
+        data: { creditBalance: { decrement: 5 } },
       });
       expect(prismaService.practiceSession.create).toHaveBeenCalledWith(expect.objectContaining({
         data: { userId: 'user_1', questionId: 'question_1', part: 1 }
@@ -109,7 +109,7 @@ describe('PracticeService', () => {
 
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user_1',
-        speakingBalance: 0,
+        creditBalance: 0,
         subscriptionTier: 'premium',
         subscriptionExpiresAt: futureDate
       });

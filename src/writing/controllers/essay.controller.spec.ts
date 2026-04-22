@@ -16,7 +16,7 @@ describe('EssayController', () => {
   beforeEach(async () => {
     const mockUsersService = {
       canStartSession: jest.fn(),
-      incrementDailySession: jest.fn(),
+      deductCredits: jest.fn(),
     };
 
     const mockPrismaService = {

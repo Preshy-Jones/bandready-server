@@ -93,8 +93,7 @@ export class AuthController {
       subscriptionTier: req.user.subscriptionTier,
       subscriptionExpiresAt: req.user.subscriptionExpiresAt,
       country: req.user.country,
-      speakingBalance: req.user.speakingBalance,
-      writingBalance: req.user.writingBalance,
+      creditBalance: req.user.creditBalance,
     };
   }
 

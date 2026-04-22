@@ -136,10 +136,10 @@ export class PracticeService {
           user.subscriptionTier === 'premium' &&
           (!user.subscriptionExpiresAt || user.subscriptionExpiresAt > new Date());
 
-        if (!isPremium && user.speakingBalance > 0) {
+        if (!isPremium && user.creditBalance >= 5) {
           await tx.user.update({
             where: { id: userId },
-            data: { speakingBalance: { decrement: 1 } },
+            data: { creditBalance: { decrement: 5 } },
           });
         }
       }
@@ -668,7 +668,7 @@ export class PracticeService {
         lastPracticeDate: storedProgress?.lastPracticeDate ?? null,
       },
       targetScore: normalizedUser?.targetBandScore,
-      sessionBalance: normalizedUser?.speakingBalance || 0,
+      sessionBalance: normalizedUser?.creditBalance || 0,
       scoreTrend,
       topicDistribution: topicDistribution.map(t => ({
         part: t.part,
