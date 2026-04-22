@@ -213,7 +213,7 @@ export class PaymentsService {
         email: user.email,
         amount: selectedPlan.amountKobo,
         currency: 'NGN',
-        callback_url: `${frontendUrl}/settings?payment=paystack`,
+        callback_url: `${frontendUrl}/dashboard?payment=paystack`,
         metadata: {
           userId: user.id,
           plan,
@@ -1011,7 +1011,7 @@ export class PaymentsService {
       // Create Polar checkout via SDK
       const checkout = await polar.checkouts.create({
         products: [polarProductId],
-        successUrl: `${frontendUrl}/settings?payment=polar&status=success`,
+        successUrl: `${frontendUrl}/dashboard?payment=polar&status=success`,
         customerEmail: user.email,
         metadata: {
           userId: user.id,
