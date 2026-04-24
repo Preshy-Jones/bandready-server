@@ -30,12 +30,6 @@ interface RegionEntry {
 
 const REGION_CONFIG: Record<string, RegionEntry> = {
   NG: { provider: 'paystack', models: ['packs'], packTier: 'nigeria' },
-  IN: { provider: 'global',   models: ['packs'], packTier: 'india' },
-  PK: { provider: 'global',   models: ['packs'], packTier: 'india' },
-  BD: { provider: 'global',   models: ['packs'], packTier: 'india' },
-  NP: { provider: 'global',   models: ['packs'], packTier: 'india' },
-  LK: { provider: 'global',   models: ['packs'], packTier: 'india' },
-  PH: { provider: 'global',   models: ['packs'], packTier: 'india' },
   _default: { provider: 'global', models: ['subscriptions'] },
 };
 
