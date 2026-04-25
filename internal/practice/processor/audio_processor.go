@@ -183,3 +183,5 @@ func (p *AudioProcessor) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	log.Printf("Audio processing complete for session %s (score: %.1f)", payload.SessionID, assessment.OverallBandScore)
 	return nil
 }
+
+// 17798110
