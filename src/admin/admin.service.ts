@@ -915,6 +915,133 @@ export class AdminService {
     };
   }
 
+  // ─── Usage Analytics ──────────────────────────────────────────
+
+  async getSpeakingUsage(page: number, limit: number, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: Prisma.PracticeSessionWhereInput = {};
+
+    if (search) {
+      where.user = {
+        OR: [
+          { email: { contains: search, mode: 'insensitive' } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [sessions, total] = await Promise.all([
+      this.prisma.practiceSession.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, email: true, fullName: true, subscriptionTier: true } },
+          question: { select: { topic: true, part: true } },
+        },
+      }),
+      this.prisma.practiceSession.count({ where }),
+    ]);
+
+    return { sessions, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async getWritingUsage(page: number, limit: number, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: Prisma.EssaySubmissionWhereInput = {};
+
+    if (search) {
+      where.user = {
+        OR: [
+          { email: { contains: search, mode: 'insensitive' } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [submissions, total] = await Promise.all([
+      this.prisma.essaySubmission.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { submittedAt: 'desc' },
+        include: {
+          user: { select: { id: true, email: true, fullName: true, subscriptionTier: true } },
+          question: { select: { taskType: true, examType: true } },
+          feedback: true,
+        },
+      }),
+      this.prisma.essaySubmission.count({ where }),
+    ]);
+
+    return { submissions, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async getReadingUsage(page: number, limit: number, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: Prisma.ReadingSessionWhereInput = {};
+
+    if (search) {
+      where.user = {
+        OR: [
+          { email: { contains: search, mode: 'insensitive' } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    try {
+      const [sessions, total] = await Promise.all([
+        this.prisma.readingSession.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: { select: { id: true, email: true, fullName: true, subscriptionTier: true } },
+            results: true,
+          },
+        }),
+        this.prisma.readingSession.count({ where }),
+      ]);
+
+      return { sessions, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    } catch (e) {
+        return this.handleReadingUnavailable('reading_sessions', e, { sessions: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+    }
+  }
+
+  async getDrillUsage(page: number, limit: number, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: Prisma.DrillAttemptWhereInput = {};
+
+    if (search) {
+      where.user = {
+        OR: [
+          { email: { contains: search, mode: 'insensitive' } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [attempts, total] = await Promise.all([
+      this.prisma.drillAttempt.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { attemptedAt: 'desc' },
+        include: {
+          user: { select: { id: true, email: true, fullName: true, subscriptionTier: true } },
+          drill: { select: { type: true, category: true, difficulty: true, specificSkill: true } },
+        },
+      }),
+      this.prisma.drillAttempt.count({ where }),
+    ]);
+
+    return { attempts, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
   private handleReadingUnavailable(
     resource: string,
     error: unknown,
