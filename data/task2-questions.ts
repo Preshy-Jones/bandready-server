@@ -191,5 +191,119 @@ export const task2Questions = [
     subType: 'two_part',
     taskType: 'TASK2',
     id: 't2-official-general-003',
-  }
+  },
+
+  // EXPANDED PRACTICE BANK
+  {
+    id: 't2-opinion-006',
+    taskType: 'TASK2',
+    subType: 'opinion',
+    prompt:
+      'Some people believe that governments should spend more money on public transport than on building new roads.\n\nTo what extent do you agree or disagree?',
+  },
+  {
+    id: 't2-opinion-007',
+    taskType: 'TASK2',
+    subType: 'opinion',
+    prompt:
+      'Many people think that schools should teach practical skills such as managing money and cooking, while others believe academic subjects are more important.\n\nTo what extent do you agree or disagree?',
+  },
+  {
+    id: 't2-discussion-008',
+    taskType: 'TASK2',
+    subType: 'discussion',
+    prompt:
+      'Some people say that advertising encourages unnecessary spending, while others argue that it helps consumers make better choices.\n\nDiscuss both views and give your own opinion.',
+  },
+  {
+    id: 't2-opinion-009',
+    taskType: 'TASK2',
+    subType: 'opinion',
+    prompt:
+      'In many countries, governments are investing in space exploration while social problems remain unsolved.\n\nTo what extent do you think this is a good use of public money?',
+  },
+  {
+    id: 't2-discussion-005',
+    taskType: 'TASK2',
+    subType: 'discussion',
+    prompt:
+      'Some people think that children should be encouraged to compete, while others believe cooperation is more valuable.\n\nDiscuss both views and give your own opinion.',
+  },
+  {
+    id: 't2-discussion-006',
+    taskType: 'TASK2',
+    subType: 'discussion',
+    prompt:
+      'Some people believe that newspapers are the best way to learn about current events, while others prefer online news sources.\n\nDiscuss both views and give your own opinion.',
+  },
+  {
+    id: 't2-discussion-007',
+    taskType: 'TASK2',
+    subType: 'discussion',
+    prompt:
+      'Some people think that older employees are more valuable to a company, while others believe younger workers bring more benefits.\n\nDiscuss both views and give your own opinion.',
+  },
+  {
+    id: 't2-problem-005',
+    taskType: 'TASK2',
+    subType: 'problem_solution',
+    prompt:
+      'Many young people today experience high levels of stress and anxiety.\n\nWhat are the main causes of this problem, and what measures could be taken to address it?',
+  },
+  {
+    id: 't2-problem-006',
+    taskType: 'TASK2',
+    subType: 'problem_solution',
+    prompt:
+      'In many cities, housing has become increasingly expensive.\n\nWhy is this happening, and what can governments do to make housing more affordable?',
+  },
+  {
+    id: 't2-problem-007',
+    taskType: 'TASK2',
+    subType: 'problem_solution',
+    prompt:
+      'Many people find it difficult to maintain a healthy lifestyle in modern society.\n\nWhat are the reasons for this, and how can individuals and governments improve public health?',
+  },
+  {
+    id: 't2-advdis-005',
+    taskType: 'TASK2',
+    subType: 'advantages_disadvantages',
+    prompt:
+      'An increasing number of people are using mobile payment apps instead of cash.\n\nWhat are the advantages and disadvantages of this development?',
+  },
+  {
+    id: 't2-advdis-006',
+    taskType: 'TASK2',
+    subType: 'advantages_disadvantages',
+    prompt:
+      'Some universities now offer most of their courses online.\n\nWhat are the advantages and disadvantages of online university education?',
+  },
+  {
+    id: 't2-advdis-007',
+    taskType: 'TASK2',
+    subType: 'advantages_disadvantages',
+    prompt:
+      'In some countries, more people are choosing to buy second-hand goods rather than new products.\n\nWhat are the advantages and disadvantages of this trend?',
+  },
+  {
+    id: 't2-twopart-005',
+    taskType: 'TASK2',
+    subType: 'two_part',
+    prompt:
+      'Many people today move away from their families for work or study.\n\nWhy does this happen? Do you think this is a positive or negative development?',
+  },
+  {
+    id: 't2-twopart-006',
+    taskType: 'TASK2',
+    subType: 'two_part',
+    prompt:
+      'In many countries, people are having children later in life.\n\nWhy is this happening? What effects can this have on families and society?',
+  },
+  {
+    id: 't2-twopart-007',
+    taskType: 'TASK2',
+    subType: 'two_part',
+    prompt:
+      'More people are choosing careers that allow them to travel frequently.\n\nWhy is this becoming popular? Is this lifestyle mostly beneficial or harmful?',
+  },
 ];

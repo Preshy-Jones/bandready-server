@@ -335,8 +335,10 @@ export class MailService {
     userIds?: string[];
     ctaLabel?: string;
     ctaUrl?: string;
+    from?: string;
   }): Promise<{ sent: number; failed: number }> {
-    const { subject, body, audience, userIds, ctaLabel, ctaUrl } = opts;
+    const { subject, body, audience, userIds, ctaLabel, ctaUrl, from } = opts;
+    const fromEmail = from || this.fromEmail;
 
     const where = userIds?.length
       ? { id: { in: userIds }, isEmailVerified: true }
@@ -359,7 +361,7 @@ export class MailService {
         ${textToParagraphs(body)}
         ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
       `);
-      return { from: this.fromEmail, to: u.email, subject, html };
+      return { from: fromEmail, to: u.email, subject, html };
     });
 
     // Resend batch accepts max 100 per call — chunk if needed

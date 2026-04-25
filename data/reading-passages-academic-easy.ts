@@ -400,4 +400,198 @@ Looking ahead, the convergence of AI with other emerging technologies promises t
       },
     ],
   },
+  // ──────────────────────────────────────────────────────────────
+  // Passage 3: Society — The Rise of Urban Farming (EASY)
+  // Question types: TFNG (5), Sentence Completion (4), MC (4) = 13 questions
+  // ──────────────────────────────────────────────────────────────
+  {
+    title: 'The Rise of Urban Farming',
+    content: `Urban farming, once considered a small hobby for people with gardens or balconies, has become an increasingly serious response to food security, environmental pressure, and community development. In many cities, vegetables are now grown on rooftops, in converted warehouses, beside railway lines, and even inside shipping containers. Although these projects vary widely in size and purpose, they share a common aim: producing food closer to the people who consume it.
+
+One reason for the growth of urban farming is the pressure placed on traditional food supply chains. In large cities, fresh produce often travels hundreds or even thousands of kilometres before reaching a supermarket shelf. This journey requires fuel, refrigeration, packaging, and storage, all of which add financial and environmental costs. By growing food within the city, urban farms can shorten the distance between producer and consumer and reduce some of the waste associated with long-distance transport.
+
+Rooftop farming has received particular attention because many city buildings have unused flat roofs. In Singapore, for example, several commercial buildings now host vegetable gardens that supply nearby restaurants and grocery stores. These farms do more than produce food. They can also help cool buildings, absorb rainwater, and make dense urban areas more pleasant. However, rooftop farms require careful planning because roofs must be strong enough to support soil, water, equipment, and workers.
+
+Another fast-growing model is vertical farming, where crops are grown indoors in stacked layers under artificial lights. Vertical farms can operate throughout the year and are protected from extreme weather, pests, and soil contamination. They also use much less land than conventional farms. Some systems recycle water very efficiently, making them attractive in places where water is scarce. The main disadvantage is energy use, as lighting, temperature control, and ventilation can be expensive.
+
+Community gardens are a more social form of urban agriculture. These shared spaces allow residents to grow their own fruit, vegetables, and herbs, often on land that was previously vacant or neglected. Studies of community gardens in cities such as Toronto and Melbourne have found that they can improve neighbourhood relationships and encourage healthier eating. For older residents and people living alone, gardening can also reduce isolation by creating regular opportunities for conversation and cooperation.
+
+Schools have also begun using urban farms as outdoor classrooms. Students can learn biology, nutrition, environmental science, and teamwork through practical activities such as planting seeds, measuring plant growth, and preparing simple meals from harvested vegetables. Teachers often report that students who struggle with textbook learning become more engaged when lessons involve real plants and visible results. As a result, school gardens are increasingly seen as educational tools rather than decorative extras.
+
+Despite these benefits, urban farming is unlikely to replace rural agriculture. Cities do not have enough suitable space to grow all the grains, oils, and animal feed required by their populations. Urban farms are usually most effective at producing fresh, high-value crops such as lettuce, herbs, tomatoes, and strawberries. Their contribution is therefore supplementary: they improve local access to fresh produce, but they cannot provide a complete food system on their own.
+
+Financial sustainability is another challenge. Land in cities is expensive, and small farms may struggle to compete with large rural producers. Some urban farms survive by selling premium produce to restaurants, while others depend on grants, volunteers, or partnerships with schools and charities. Successful projects usually combine food production with another purpose, such as education, job training, waste reduction, or community improvement.
+
+Technology may help urban farming become more efficient in the future. Sensors can monitor moisture, temperature, and nutrient levels, while automated systems can adjust watering and lighting with minimal human labour. Mobile apps are also being used to connect growers with local customers and volunteers. Nevertheless, experts warn that technology alone cannot guarantee success. Urban farms must also fit local needs, budgets, climate conditions, and community interests.
+
+The rise of urban farming reflects a broader shift in how cities think about food. Instead of treating food as something that simply arrives from elsewhere, many planners now see food production as part of urban design. Parks, schools, housing developments, and commercial buildings may all have a role to play. If managed realistically, urban farming can make cities greener, healthier, and more resilient, even if it remains only one part of a much larger food system.`,
+    wordCount: 705,
+    difficultyLevel: 'EASY',
+    testType: 'ACADEMIC',
+    topicCategory: 'Society & Environment',
+    sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'food security', definition: 'Reliable access to enough safe and nutritious food' },
+      { term: 'supply chains', definition: 'The systems that move goods from producers to consumers' },
+      { term: 'vertical farming', definition: 'Growing crops indoors in stacked layers, often with artificial light' },
+      { term: 'supplementary', definition: 'Added to something else, but not replacing it completely' },
+      { term: 'financial sustainability', definition: 'The ability of a project to continue operating without running out of money' },
+      { term: 'resilient', definition: 'Able to recover from difficulties or adapt to change' },
+    ],
+    paragraphs: [
+      { label: 'A', content: 'Urban farming, once considered a small hobby for people with gardens or balconies, has become an increasingly serious response to food security, environmental pressure, and community development. In many cities, vegetables are now grown on rooftops, in converted warehouses, beside railway lines, and even inside shipping containers. Although these projects vary widely in size and purpose, they share a common aim: producing food closer to the people who consume it.' },
+      { label: 'B', content: 'One reason for the growth of urban farming is the pressure placed on traditional food supply chains. In large cities, fresh produce often travels hundreds or even thousands of kilometres before reaching a supermarket shelf. This journey requires fuel, refrigeration, packaging, and storage, all of which add financial and environmental costs. By growing food within the city, urban farms can shorten the distance between producer and consumer and reduce some of the waste associated with long-distance transport.' },
+      { label: 'C', content: 'Rooftop farming has received particular attention because many city buildings have unused flat roofs. In Singapore, for example, several commercial buildings now host vegetable gardens that supply nearby restaurants and grocery stores. These farms do more than produce food. They can also help cool buildings, absorb rainwater, and make dense urban areas more pleasant. However, rooftop farms require careful planning because roofs must be strong enough to support soil, water, equipment, and workers.' },
+      { label: 'D', content: 'Another fast-growing model is vertical farming, where crops are grown indoors in stacked layers under artificial lights. Vertical farms can operate throughout the year and are protected from extreme weather, pests, and soil contamination. They also use much less land than conventional farms. Some systems recycle water very efficiently, making them attractive in places where water is scarce. The main disadvantage is energy use, as lighting, temperature control, and ventilation can be expensive.' },
+      { label: 'E', content: 'Community gardens are a more social form of urban agriculture. These shared spaces allow residents to grow their own fruit, vegetables, and herbs, often on land that was previously vacant or neglected. Studies of community gardens in cities such as Toronto and Melbourne have found that they can improve neighbourhood relationships and encourage healthier eating. For older residents and people living alone, gardening can also reduce isolation by creating regular opportunities for conversation and cooperation.' },
+      { label: 'F', content: 'Schools have also begun using urban farms as outdoor classrooms. Students can learn biology, nutrition, environmental science, and teamwork through practical activities such as planting seeds, measuring plant growth, and preparing simple meals from harvested vegetables. Teachers often report that students who struggle with textbook learning become more engaged when lessons involve real plants and visible results. As a result, school gardens are increasingly seen as educational tools rather than decorative extras.' },
+      { label: 'G', content: 'Despite these benefits, urban farming is unlikely to replace rural agriculture. Cities do not have enough suitable space to grow all the grains, oils, and animal feed required by their populations. Urban farms are usually most effective at producing fresh, high-value crops such as lettuce, herbs, tomatoes, and strawberries. Their contribution is therefore supplementary: they improve local access to fresh produce, but they cannot provide a complete food system on their own.' },
+      { label: 'H', content: 'Financial sustainability is another challenge. Land in cities is expensive, and small farms may struggle to compete with large rural producers. Some urban farms survive by selling premium produce to restaurants, while others depend on grants, volunteers, or partnerships with schools and charities. Successful projects usually combine food production with another purpose, such as education, job training, waste reduction, or community improvement.' },
+      { label: 'I', content: 'Technology may help urban farming become more efficient in the future. Sensors can monitor moisture, temperature, and nutrient levels, while automated systems can adjust watering and lighting with minimal human labour. Mobile apps are also being used to connect growers with local customers and volunteers. Nevertheless, experts warn that technology alone cannot guarantee success. Urban farms must also fit local needs, budgets, climate conditions, and community interests.' },
+      { label: 'J', content: 'The rise of urban farming reflects a broader shift in how cities think about food. Instead of treating food as something that simply arrives from elsewhere, many planners now see food production as part of urban design. Parks, schools, housing developments, and commercial buildings may all have a role to play. If managed realistically, urban farming can make cities greener, healthier, and more resilient, even if it remains only one part of a much larger food system.' },
+    ],
+    questionSets: [
+      {
+        questionType: 'TRUE_FALSE_NOT_GIVEN',
+        instructions: 'Do the following statements agree with the information given in the passage? Write TRUE if the statement agrees with the information, FALSE if the statement contradicts the information, NOT GIVEN if there is no information on this.',
+        questions: [
+          {
+            questionNumber: 1,
+            questionData: { prompt: 'Urban farming projects all have exactly the same size and purpose.' },
+            correctAnswer: 'FALSE',
+            explanation: 'Paragraph A says the projects "vary widely in size and purpose."',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 2,
+            questionData: { prompt: 'Fresh produce for large cities may travel thousands of kilometres.' },
+            correctAnswer: 'TRUE',
+            explanation: 'Paragraph B states that fresh produce often travels "hundreds or even thousands of kilometres."',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 3,
+            questionData: { prompt: 'Singapore has banned rooftop vegetable gardens on commercial buildings.' },
+            correctAnswer: 'FALSE',
+            explanation: 'Paragraph C says several commercial buildings in Singapore now host vegetable gardens.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 4,
+            questionData: { prompt: 'Vertical farms always use less energy than conventional farms.' },
+            correctAnswer: 'NOT GIVEN',
+            explanation: 'The passage says vertical farms use less land, but their energy use can be expensive. It does not compare total energy use with conventional farms.',
+            skillTested: 'Inference',
+          },
+          {
+            questionNumber: 5,
+            questionData: { prompt: 'Community gardens can help reduce social isolation for some people.' },
+            correctAnswer: 'TRUE',
+            explanation: 'Paragraph E says gardening can reduce isolation for older residents and people living alone.',
+            skillTested: 'Detail recognition',
+          },
+        ],
+      },
+      {
+        questionType: 'SENTENCE_COMPLETION',
+        instructions: 'Complete the sentences below. Choose NO MORE THAN TWO WORDS from the passage for each answer.',
+        questions: [
+          {
+            questionNumber: 6,
+            questionData: { prompt: 'Urban farms reduce the distance between producer and _______.' },
+            correctAnswer: ['consumer'],
+            explanation: 'Paragraph B says urban farms can shorten the distance between producer and consumer.',
+            skillTested: 'Scanning',
+          },
+          {
+            questionNumber: 7,
+            questionData: { prompt: 'Rooftop farms can absorb _______ and help cool buildings.' },
+            correctAnswer: ['rainwater'],
+            explanation: 'Paragraph C states rooftop farms can help cool buildings and absorb rainwater.',
+            skillTested: 'Scanning',
+          },
+          {
+            questionNumber: 8,
+            questionData: { prompt: 'Vertical farms are protected from extreme weather, pests and _______.' },
+            correctAnswer: ['soil contamination'],
+            explanation: 'Paragraph D lists extreme weather, pests, and soil contamination.',
+            skillTested: 'Scanning',
+          },
+          {
+            questionNumber: 9,
+            questionData: { prompt: 'School gardens are increasingly seen as educational tools rather than _______.' },
+            correctAnswer: ['decorative extras'],
+            explanation: 'Paragraph F uses the phrase "educational tools rather than decorative extras."',
+            skillTested: 'Scanning',
+          },
+        ],
+      },
+      {
+        questionType: 'MULTIPLE_CHOICE',
+        instructions: 'Choose the correct letter, A, B, C or D.',
+        questions: [
+          {
+            questionNumber: 10,
+            questionData: {
+              prompt: 'According to the passage, the main disadvantage of vertical farming is:',
+              options: [
+                { label: 'A', text: 'lack of protection from pests' },
+                { label: 'B', text: 'high energy use' },
+                { label: 'C', text: 'poor water recycling' },
+                { label: 'D', text: 'limited year-round operation' },
+              ],
+            },
+            correctAnswer: ['B'],
+            explanation: 'Paragraph D says the main disadvantage is energy use.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 11,
+            questionData: {
+              prompt: 'Why is urban farming unlikely to replace rural agriculture?',
+              options: [
+                { label: 'A', text: 'Urban farms cannot grow any fresh produce.' },
+                { label: 'B', text: 'Cities lack enough suitable space for all food needs.' },
+                { label: 'C', text: 'Consumers do not want city-grown food.' },
+                { label: 'D', text: 'Urban farming is illegal in most cities.' },
+              ],
+            },
+            correctAnswer: ['B'],
+            explanation: 'Paragraph G says cities do not have enough suitable space to grow all required grains, oils, and animal feed.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 12,
+            questionData: {
+              prompt: 'Successful urban farming projects usually:',
+              options: [
+                { label: 'A', text: 'avoid working with schools or charities' },
+                { label: 'B', text: 'focus only on producing animal feed' },
+                { label: 'C', text: 'combine food production with another purpose' },
+                { label: 'D', text: 'depend entirely on artificial lighting' },
+              ],
+            },
+            correctAnswer: ['C'],
+            explanation: 'Paragraph H says successful projects usually combine food production with another purpose.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 13,
+            questionData: {
+              prompt: 'What is the writer\'s overall view of urban farming?',
+              options: [
+                { label: 'A', text: 'It is useless because it cannot replace rural farms.' },
+                { label: 'B', text: 'It can be valuable if its limits are understood.' },
+                { label: 'C', text: 'It should be restricted to wealthy cities.' },
+                { label: 'D', text: 'It is mainly a decorative trend.' },
+              ],
+            },
+            correctAnswer: ['B'],
+            explanation: 'The passage presents benefits and limits, concluding that urban farming can improve cities if managed realistically.',
+            skillTested: 'Inference',
+          },
+        ],
+      },
+    ],
+  },
 ];

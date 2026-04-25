@@ -301,4 +301,134 @@ export const task1Questions = [
       'A friend from another country is planning to visit your town.\n\nWrite a letter to your friend. In your letter:\n• suggest where your friend could stay\n• recommend some places your friend should visit\n• explain what preparations your friend should make before arriving',
     imageUrl: null,
   },
+
+  // EXPANDED ACADEMIC TASK 1 PRACTICE
+  {
+    id: 't1-line-004',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'line_graph',
+    prompt:
+      'The line graph below shows the percentage of households with internet access in five countries between 2000 and 2020.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-line-005',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'line_graph',
+    prompt:
+      'The line graph below shows changes in the number of international students at three universities from 2010 to 2022.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-bar-004',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'bar_chart',
+    prompt:
+      'The bar chart below compares the average weekly spending of families in four income groups on food, housing, transport and leisure.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-bar-005',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'bar_chart',
+    prompt:
+      'The chart below shows the proportion of adults in six age groups who participated in regular exercise in one country in 2021.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-pie-003',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'pie_chart',
+    prompt:
+      'The pie charts below show how water was used in agriculture, industry and households in three regions in 2020.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-table-003',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'table',
+    prompt:
+      'The table below gives information about the average number of hours spent on paid work and unpaid household work by men and women in five countries.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-process-004',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'process',
+    prompt:
+      'The diagram below shows the stages involved in producing drinking water from seawater using a desalination system.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+  {
+    id: 't1-map-003',
+    taskType: 'TASK1',
+    examType: 'ACADEMIC',
+    subType: 'map',
+    prompt:
+      'The maps below show changes to a public park between 1995 and the present day.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    imageUrl: null,
+  },
+
+  // EXPANDED GENERAL TRAINING TASK 1 PRACTICE
+  {
+    id: 't1-general-formal-006',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'formal_letter',
+    prompt:
+      'You recently attended a training course organised by your company, but you were dissatisfied with some parts of it.\n\nWrite a letter to the training manager. In your letter:\n• describe the course you attended\n• explain what problems you experienced\n• suggest how the course could be improved',
+    imageUrl: null,
+  },
+  {
+    id: 't1-general-formal-007',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'formal_letter',
+    prompt:
+      'A new sports centre is being planned in your local area, and residents have been asked for their opinions.\n\nWrite a letter to the local council. In your letter:\n• say why you support or oppose the plan\n• explain how the centre could affect local residents\n• suggest facilities that should be included',
+    imageUrl: null,
+  },
+  {
+    id: 't1-general-semi-005',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'semi_formal_letter',
+    prompt:
+      'A colleague helped you complete an important project while you were away from work.\n\nWrite a letter to your colleague. In your letter:\n• thank them for their help\n• explain why their support was important\n• offer to help them in the future',
+    imageUrl: null,
+  },
+  {
+    id: 't1-general-semi-006',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'semi_formal_letter',
+    prompt:
+      'Your manager has asked for suggestions on how to improve staff morale at work.\n\nWrite a letter to your manager. In your letter:\n• describe the current situation\n• suggest two ways to improve morale\n• explain why your suggestions would help',
+    imageUrl: null,
+  },
+  {
+    id: 't1-general-informal-005',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'informal_letter',
+    prompt:
+      'A friend has invited you to a special celebration, but you cannot attend.\n\nWrite a letter to your friend. In your letter:\n• thank your friend for the invitation\n• explain why you cannot come\n• suggest another time to meet',
+    imageUrl: null,
+  },
+  {
+    id: 't1-general-informal-006',
+    taskType: 'TASK1',
+    examType: 'GENERAL',
+    subType: 'informal_letter',
+    prompt:
+      'You recently moved to a new city and want to tell a friend about it.\n\nWrite a letter to your friend. In your letter:\n• describe your new home\n• explain what you like about the city\n• invite your friend to visit you',
+    imageUrl: null,
+  },
 ];
