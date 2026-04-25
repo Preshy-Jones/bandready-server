@@ -351,18 +351,16 @@ export class MailService {
       return { sent: 0, failed: 0 };
     }
 
-    const html = baseEmail(`
-      ${emailH2(subject)}
-      ${textToParagraphs(body)}
-      ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
-    `);
-
-    const messages = users.map((u) => ({
-      from: this.fromEmail,
-      to: u.email,
-      subject,
-      html,
-    }));
+    const messages = users.map((u) => {
+      const firstName = u.fullName?.split(' ')[0] || 'there';
+      const html = baseEmail(`
+        ${emailH2(subject)}
+        ${emailP(`Hi ${firstName},`)}
+        ${textToParagraphs(body)}
+        ${ctaLabel && ctaUrl ? ctaButton(ctaUrl, ctaLabel) : ''}
+      `);
+      return { from: this.fromEmail, to: u.email, subject, html };
+    });
 
     // Resend batch accepts max 100 per call — chunk if needed
     const CHUNK = 100;
