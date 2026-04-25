@@ -1044,4 +1044,186 @@ Education and public awareness are essential components of the response to clima
       },
     ],
   },
+  {
+    title: 'City Library Services and Membership Guide',
+    content: `Riverside City Library operates five branches across the city and offers services for residents, students, workers, and visitors. Membership is free for anyone who lives, works, or studies in Riverside. Applicants must provide proof of identity and one document showing a local address, workplace, or educational institution. Visitors who do not meet these conditions may apply for a temporary membership card, which allows limited borrowing for up to three months.
+
+Standard members may borrow up to twelve items at one time. Books can be kept for three weeks, while DVDs, board games, and language-learning kits may be borrowed for one week. Items can be renewed twice, provided no other member has reserved them. Renewals can be completed online, by phone, or at any branch desk. Members who return items late are not charged daily fines, but borrowing privileges are suspended until the overdue materials are returned.
+
+The library also provides digital services. Members can access e-books, audiobooks, newspapers, academic databases, and online language courses through the library website. Some digital resources require a personal identification number, which can be created after the first login. Library staff run weekly drop-in sessions to help users install reading apps, reset passwords, and search online databases. These sessions are free and do not require booking.
+
+Study spaces are available at all branches, although facilities differ. The Central Branch has quiet rooms, group study booths, and twenty computers with printing access. The East Branch has fewer desks but longer evening hours during university exam periods. Rooms for group work can be booked for two-hour periods, with a maximum of one booking per person each day. Food is not allowed in study rooms, but covered drinks are permitted.
+
+Children's programmes are held throughout the year. Story sessions for preschool children take place every Tuesday and Thursday morning, while a reading club for ages seven to eleven meets on Saturday afternoons. During school holidays, the library offers craft workshops and science activities. Parents or carers must remain in the building for any child under eight. Most children's events are free, but workshops with limited materials may require advance registration.
+
+The library welcomes volunteers in several roles. Volunteers may help organise returned books, support children's events, deliver books to housebound residents, or assist with basic computer classes. Applicants must attend a short interview and complete a two-hour training session before starting. Volunteers working directly with children or vulnerable adults must also complete a background check. The library asks volunteers to commit to at least two hours per week for three months.
+
+Members can suggest new materials for purchase by completing an online request form. The library considers demand, cost, quality, and relevance to the collection before buying suggested items. Requests for recently published books are usually reviewed within ten working days, while specialist academic titles may take longer. The library does not normally buy textbooks for individual courses, but it may purchase general study guides if they are likely to benefit a wide range of users.
+
+Feedback and complaints can be submitted in person, by email, or through the website. Simple issues, such as missing items on shelves or problems with printers, are usually handled by branch staff on the same day. More serious complaints are reviewed by the library services manager, who aims to respond within fifteen working days. If a user is not satisfied with the response, the complaint can be referred to the city council's customer service office.`,
+    wordCount: 610,
+    difficultyLevel: 'EASY',
+    testType: 'GENERAL_TRAINING',
+    topicCategory: 'Public Services',
+    sourceAttribution: 'Original content for educational purposes',
+    vocabularyTerms: [
+      { term: 'borrowing privileges', definition: 'The right to borrow library materials' },
+      { term: 'drop-in sessions', definition: 'Help sessions that people can attend without booking' },
+      { term: 'housebound', definition: 'Unable to leave home easily because of illness, disability, or age' },
+      { term: 'relevance', definition: 'The degree to which something is useful or connected to a purpose' },
+    ],
+    paragraphs: [
+      { label: 'A', content: 'Riverside City Library operates five branches across the city and offers services for residents, students, workers, and visitors. Membership is free for anyone who lives, works, or studies in Riverside. Applicants must provide proof of identity and one document showing a local address, workplace, or educational institution. Visitors who do not meet these conditions may apply for a temporary membership card, which allows limited borrowing for up to three months.' },
+      { label: 'B', content: 'Standard members may borrow up to twelve items at one time. Books can be kept for three weeks, while DVDs, board games, and language-learning kits may be borrowed for one week. Items can be renewed twice, provided no other member has reserved them. Renewals can be completed online, by phone, or at any branch desk. Members who return items late are not charged daily fines, but borrowing privileges are suspended until the overdue materials are returned.' },
+      { label: 'C', content: 'The library also provides digital services. Members can access e-books, audiobooks, newspapers, academic databases, and online language courses through the library website. Some digital resources require a personal identification number, which can be created after the first login. Library staff run weekly drop-in sessions to help users install reading apps, reset passwords, and search online databases. These sessions are free and do not require booking.' },
+      { label: 'D', content: 'Study spaces are available at all branches, although facilities differ. The Central Branch has quiet rooms, group study booths, and twenty computers with printing access. The East Branch has fewer desks but longer evening hours during university exam periods. Rooms for group work can be booked for two-hour periods, with a maximum of one booking per person each day. Food is not allowed in study rooms, but covered drinks are permitted.' },
+      { label: 'E', content: 'Children\'s programmes are held throughout the year. Story sessions for preschool children take place every Tuesday and Thursday morning, while a reading club for ages seven to eleven meets on Saturday afternoons. During school holidays, the library offers craft workshops and science activities. Parents or carers must remain in the building for any child under eight. Most children\'s events are free, but workshops with limited materials may require advance registration.' },
+      { label: 'F', content: 'The library welcomes volunteers in several roles. Volunteers may help organise returned books, support children\'s events, deliver books to housebound residents, or assist with basic computer classes. Applicants must attend a short interview and complete a two-hour training session before starting. Volunteers working directly with children or vulnerable adults must also complete a background check. The library asks volunteers to commit to at least two hours per week for three months.' },
+      { label: 'G', content: 'Members can suggest new materials for purchase by completing an online request form. The library considers demand, cost, quality, and relevance to the collection before buying suggested items. Requests for recently published books are usually reviewed within ten working days, while specialist academic titles may take longer. The library does not normally buy textbooks for individual courses, but it may purchase general study guides if they are likely to benefit a wide range of users.' },
+      { label: 'H', content: 'Feedback and complaints can be submitted in person, by email, or through the website. Simple issues, such as missing items on shelves or problems with printers, are usually handled by branch staff on the same day. More serious complaints are reviewed by the library services manager, who aims to respond within fifteen working days. If a user is not satisfied with the response, the complaint can be referred to the city council\'s customer service office.' },
+    ],
+    questionSets: [
+      {
+        questionType: 'TRUE_FALSE_NOT_GIVEN',
+        instructions: 'Do the following statements agree with the information given in the passage? Write TRUE if the statement agrees with the information, FALSE if the statement contradicts the information, NOT GIVEN if there is no information on this.',
+        questions: [
+          {
+            questionNumber: 1,
+            questionData: { prompt: 'Membership is free for people who work in Riverside.' },
+            correctAnswer: 'TRUE',
+            explanation: 'Paragraph A says membership is free for anyone who lives, works, or studies in Riverside.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 2,
+            questionData: { prompt: 'Temporary membership cards allow unlimited borrowing for six months.' },
+            correctAnswer: 'FALSE',
+            explanation: 'Paragraph A says temporary membership allows limited borrowing for up to three months.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 3,
+            questionData: { prompt: 'Members must pay daily fines for late items.' },
+            correctAnswer: 'FALSE',
+            explanation: 'Paragraph B states that members who return items late are not charged daily fines.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 4,
+            questionData: { prompt: 'The library plans to increase the number of computers at the East Branch.' },
+            correctAnswer: 'NOT GIVEN',
+            explanation: 'The passage mentions East Branch hours and desks, but not plans for more computers.',
+            skillTested: 'Inference',
+          },
+          {
+            questionNumber: 5,
+            questionData: { prompt: 'Parents must stay in the building when children under eight attend activities.' },
+            correctAnswer: 'TRUE',
+            explanation: 'Paragraph E says parents or carers must remain in the building for any child under eight.',
+            skillTested: 'Detail recognition',
+          },
+        ],
+      },
+      {
+        questionType: 'SHORT_ANSWER',
+        instructions: 'Answer the questions below. Choose NO MORE THAN THREE WORDS AND/OR A NUMBER from the passage.',
+        questions: [
+          {
+            questionNumber: 6,
+            questionData: { prompt: 'How many items can standard members borrow at one time?' },
+            correctAnswer: ['twelve', '12'],
+            explanation: 'Paragraph B says standard members may borrow up to twelve items.',
+            skillTested: 'Scanning',
+          },
+          {
+            questionNumber: 7,
+            questionData: { prompt: 'What must users create to access some digital resources?' },
+            correctAnswer: ['personal identification number'],
+            explanation: 'Paragraph C says some digital resources require a personal identification number.',
+            skillTested: 'Scanning',
+          },
+          {
+            questionNumber: 8,
+            questionData: { prompt: 'Which branch has twenty computers with printing access?' },
+            correctAnswer: ['Central Branch'],
+            explanation: 'Paragraph D says the Central Branch has twenty computers with printing access.',
+            skillTested: 'Scanning',
+          },
+          {
+            questionNumber: 9,
+            questionData: { prompt: 'How long is each group study room booking?' },
+            correctAnswer: ['two-hour periods', 'two hours'],
+            explanation: 'Paragraph D says rooms can be booked for two-hour periods.',
+            skillTested: 'Scanning',
+          },
+        ],
+      },
+      {
+        questionType: 'MULTIPLE_CHOICE',
+        instructions: 'Choose the correct letter, A, B, C or D.',
+        questions: [
+          {
+            questionNumber: 10,
+            questionData: {
+              prompt: 'Which children\'s activity takes place on Saturday afternoons?',
+              options: [
+                { label: 'A', text: 'Preschool story sessions' },
+                { label: 'B', text: 'A reading club for ages seven to eleven' },
+                { label: 'C', text: 'Science activities' },
+                { label: 'D', text: 'Craft workshops with parents' },
+              ],
+            },
+            correctAnswer: ['B'],
+            explanation: 'Paragraph E says the reading club for ages seven to eleven meets on Saturday afternoons.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 11,
+            questionData: {
+              prompt: 'What is required before volunteers can start?',
+              options: [
+                { label: 'A', text: 'A payment for training materials' },
+                { label: 'B', text: 'A one-year commitment' },
+                { label: 'C', text: 'An interview and a training session' },
+                { label: 'D', text: 'A university qualification' },
+              ],
+            },
+            correctAnswer: ['C'],
+            explanation: 'Paragraph F says applicants must attend a short interview and complete a two-hour training session.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 12,
+            questionData: {
+              prompt: 'The library does not normally buy:',
+              options: [
+                { label: 'A', text: 'recently published books' },
+                { label: 'B', text: 'specialist academic titles' },
+                { label: 'C', text: 'textbooks for individual courses' },
+                { label: 'D', text: 'general study guides' },
+              ],
+            },
+            correctAnswer: ['C'],
+            explanation: 'Paragraph G says the library does not normally buy textbooks for individual courses.',
+            skillTested: 'Detail recognition',
+          },
+          {
+            questionNumber: 13,
+            questionData: {
+              prompt: 'Who reviews more serious complaints?',
+              options: [
+                { label: 'A', text: 'Branch desk staff' },
+                { label: 'B', text: 'The library services manager' },
+                { label: 'C', text: 'A volunteer coordinator' },
+                { label: 'D', text: 'The university exam office' },
+              ],
+            },
+            correctAnswer: ['B'],
+            explanation: 'Paragraph H says more serious complaints are reviewed by the library services manager.',
+            skillTested: 'Scanning',
+          },
+        ],
+      },
+    ],
+  },
 ];

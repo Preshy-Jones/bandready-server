@@ -49,6 +49,7 @@ export class AdminMailController {
       userIds?: string[];
       ctaLabel?: string;
       ctaUrl?: string;
+      from?: string;
     },
   ) {
     return this.mailService.sendBroadcast({
@@ -58,6 +59,7 @@ export class AdminMailController {
       userIds: body.userIds,
       ctaLabel: body.ctaLabel,
       ctaUrl: body.ctaUrl,
+      from: body.from,
     });
   }
 }

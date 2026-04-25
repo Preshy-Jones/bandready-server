@@ -34,7 +34,7 @@ export class AdminPaymentsController {
     const subProvider = await this.adminService.getAppSetting('active_subscription_provider');
     const speechProvider = await this.adminService.getAppSetting('active_speech_provider');
     return {
-      activePackProvider: packProvider?.value || 'polar',
+      activePackProvider: packProvider?.value || 'paddle',
       activeSubscriptionProvider: subProvider?.value || 'paddle',
       activeSpeechProvider: speechProvider?.value || 'whisper', // Default to existing whisper
     };

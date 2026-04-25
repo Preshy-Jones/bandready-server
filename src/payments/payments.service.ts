@@ -109,7 +109,7 @@ export class PaymentsService {
     const setting = await this.prisma.appSetting.findUnique({
       where: { key: 'active_pack_provider' },
     });
-    return (setting?.value as GlobalProvider) || 'polar';
+    return (setting?.value as GlobalProvider) || 'paddle';
   }
 
   private async getActiveSubscriptionProvider(): Promise<GlobalProvider> {
@@ -649,6 +649,8 @@ export class PaymentsService {
       ? 'https://api.paddle.com'
       : 'https://sandbox-api.paddle.com';
 
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
     // Build the transaction request
     const transactionPayload: Record<string, unknown> = {
       items: [
@@ -658,6 +660,10 @@ export class PaymentsService {
         },
       ],
       custom_data: customData,
+      checkout: {
+        success_url: `${frontendUrl}/dashboard?payment=paddle`,
+        cancel_url: `${frontendUrl}/pricing`,
+      },
     };
 
     // If user already has a Paddle customer ID, use it
@@ -754,6 +760,13 @@ export class PaymentsService {
 
     const ts = tsPart.replace('ts=', '');
     const h1 = h1Part.replace('h1=', '');
+
+    // Reject replayed webhooks older than 5 minutes
+    const eventTime = parseInt(ts, 10);
+    if (isNaN(eventTime) || Math.abs(Date.now() / 1000 - eventTime) > 300) {
+      throw new UnauthorizedException('Webhook timestamp too old or invalid');
+    }
+
     const signedPayload = `${ts}:${rawBody.toString('utf-8')}`;
     const expectedHash = createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
 
