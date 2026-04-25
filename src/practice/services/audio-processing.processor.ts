@@ -57,17 +57,15 @@ export class AudioProcessingProcessor extends WorkerHost {
         throw new Error(`Session ${sessionId} not found`);
       }
 
-      // 2. Upload audio to S3
-      let audioKey: string | null = null;
-      try {
-        audioKey = await this.s3Service.uploadAudio(audioBuffer, userId, sessionId);
-      } catch (error) {
-        this.logger.warn(`S3 upload failed for session ${sessionId}: ${error.message}`);
-      }
-
-      // 3. Transcribe audio using OpenAI Whisper
-      this.logger.debug(`Transcribing audio for session ${sessionId}...`);
-      const transcription = await this.speechAnalysis.transcribeAudio(audioBuffer);
+      // 2. Upload audio to S3 and transcribe in parallel
+      this.logger.debug(`Transcribing audio and uploading to S3 in parallel for session ${sessionId}...`);
+      const [audioKey, transcription] = await Promise.all([
+        this.s3Service.uploadAudio(audioBuffer, userId, sessionId).catch((error) => {
+          this.logger.warn(`S3 upload failed for session ${sessionId}: ${error.message}`);
+          return null;
+        }),
+        this.speechAnalysis.transcribeAudio(audioBuffer),
+      ]);
       
       // 4. Calculate metrics from transcription
       const audioMetrics = this.speechAnalysis.calculateAudioMetrics(transcription);
