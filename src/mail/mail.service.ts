@@ -430,4 +430,44 @@ export class MailService {
       return false;
     }
   }
+
+  async sendStudentInvitation(opts: {
+    email: string;
+    studentName: string;
+    orgName: string;
+    tempPassword: string;
+    loginUrl: string;
+    orgEmail: string;
+  }): Promise<boolean> {
+    this.logger.log(`Attempting to send invitation email to ${opts.email}`);
+
+    if (!this.configService.get<string>('RESEND_API_KEY')) {
+      this.logger.warn(`[DEV MODE] Would send B2B student invitation to ${opts.email}`);
+      return true;
+    }
+
+    try {
+      const data = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: opts.email,
+        subject: "You've been invited to practice IELTS on BandReady",
+        html: baseEmail(`
+          ${emailH2('Welcome to BandReady!')}
+          ${emailP(`Hi ${opts.studentName},`)}
+          ${emailP(`You have been invited by ${opts.orgName} to use BandReady for your IELTS preparation.`)}
+          ${emailP(`Your temporary password is: <strong>${opts.tempPassword}</strong>`)}
+          ${emailP('Please log in and update your password immediately.')}
+          ${ctaButton(opts.loginUrl, 'Log In to BandReady')}
+          ${emailP(`If you have any questions, you can reply to this email or contact ${opts.orgEmail}.`)}
+        `),
+        replyTo: opts.orgEmail,
+      });
+
+      this.logger.log(`Successfully sent student invitation email to ${opts.email}. ID: ${data.data?.id}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send student invitation email to ${opts.email}`, error);
+      return false;
+    }
+  }
 }

@@ -13,6 +13,71 @@ enum Role {
   ADMIN
 }
 
+// =============================================
+// B2B ENUMS
+// =============================================
+
+enum OrgType {
+  TRAINING_CENTER
+  LANGUAGE_SCHOOL
+  CONSULTANCY
+  UNIVERSITY
+  CORPORATE
+}
+
+enum OrgSubscriptionTier {
+  STARTER
+  GROWTH
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum OrgSubscriptionStatus {
+  ACTIVE
+  TRIAL
+  SUSPENDED
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum OrgAdminRole {
+  OWNER
+  ADMIN
+  MANAGER
+  TUTOR
+}
+
+enum CohortStudentStatus {
+  COHORT_ACTIVE
+  COMPLETED
+  DROPPED
+}
+
+enum AssignmentPracticeType {
+  SPEAKING
+  WRITING
+  READING
+  LISTENING
+  MIXED
+}
+
+enum InvoiceStatus {
+  INVOICE_PENDING
+  PAID
+  OVERDUE
+  INVOICE_CANCELLED
+}
+
+enum ActivityActorType {
+  ACTIVITY_ADMIN
+  ACTIVITY_STUDENT
+  SYSTEM
+}
+
 model User {
   id                         String    @id @default(uuid())
   email                      String    @unique
@@ -44,6 +109,12 @@ model User {
   createdAt                  DateTime  @default(now()) @map("created_at")
   updatedAt                  DateTime  @updatedAt @map("updated_at")
 
+  // B2B fields
+  organizationId    String?   @map("organization_id")
+  studentId         String?   @map("student_id") @db.VarChar(100)
+  enrolledAt        DateTime? @map("enrolled_at")
+  assignedTutorId   String?   @map("assigned_tutor_id")
+
   practiceSessions PracticeSession[]
   progress         UserProgress?
   mockTests        MockTest[]
@@ -59,6 +130,15 @@ model User {
   readingProgress     ReadingProgress[]
   readingAchievements ReadingAchievement[]
 
+  // B2B relations
+  organization          Organization?       @relation(fields: [organizationId], references: [id])
+  assignedTutor         OrganizationAdmin?  @relation("TutorStudents", fields: [assignedTutorId], references: [id])
+  organizationAdmins    OrganizationAdmin[]
+  cohortMemberships     CohortStudent[]
+  practiceAssignments   PracticeAssignment[]
+  assignmentCompletions AssignmentCompletion[]
+
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -772,4 +852,196 @@ model ReadingAchievement {
   @@unique([userId, achievementId])
   @@index([userId])
   @@map("reading_achievements")
+}
+
+// =============================================
+// B2B ORGANIZATIONS
+// =============================================
+
+model Organization {
+  id    String  @id @default(uuid())
+  name  String  @db.VarChar(255)
+  slug  String  @unique @db.VarChar(100)
+  type  OrgType
+
+  // Contact
+  email   String  @db.VarChar(255)
+  phone   String? @db.VarChar(50)
+  address String?
+  city    String? @db.VarChar(100)
+  country String  @default("Nigeria") @db.VarChar(100)
+
+  // Subscription
+  subscriptionTier     OrgSubscriptionTier   @default(STARTER) @map("subscription_tier")
+  subscriptionStatus   OrgSubscriptionStatus @default(TRIAL) @map("subscription_status")
+  maxStudents          Int                   @default(30) @map("max_students")
+  trialEndsAt          DateTime?             @map("trial_ends_at")
+  subscriptionStartsAt DateTime?             @map("subscription_starts_at")
+  subscriptionEndsAt   DateTime?             @map("subscription_ends_at")
+
+  // Billing
+  billingEmail String?      @map("billing_email") @db.VarChar(255)
+  billingCycle BillingCycle  @default(MONTHLY) @map("billing_cycle")
+  currency     String       @default("NGN") @db.VarChar(10)
+
+  // Branding
+  logoUrl      String? @map("logo_url") @db.VarChar(500)
+  primaryColor String  @default("#4F46E5") @map("primary_color") @db.VarChar(10)
+  customDomain String? @map("custom_domain") @db.VarChar(255)
+
+  // Metadata
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  admins       OrganizationAdmin[]
+  students     User[]
+  cohorts      Cohort[]
+  assignments  PracticeAssignment[]
+  invoices     OrganizationInvoice[]
+  activityLogs OrganizationActivityLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationAdmin {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
+  role           OrgAdminRole
+  permissions    Json         @default("{}")
+  invitedById    String?      @map("invited_by")
+  invitedAt      DateTime     @default(now()) @map("invited_at")
+  acceptedAt     DateTime?    @map("accepted_at")
+  isActive       Boolean      @default(true) @map("is_active")
+
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy        OrganizationAdmin?  @relation("AdminInvitations", fields: [invitedById], references: [id])
+  invitations      OrganizationAdmin[] @relation("AdminInvitations")
+  assignedCohorts  Cohort[]
+  assignedStudents User[]              @relation("TutorStudents")
+  assignments      PracticeAssignment[]
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@map("organization_admins")
+}
+
+model Cohort {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  name            String   @db.VarChar(255)
+  description     String?
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  targetExamDate  DateTime? @map("target_exam_date") @db.Date
+  targetBandScore Decimal?  @map("target_band_score") @db.Decimal(2, 1)
+  assignedTutorId String?   @map("assigned_tutor_id")
+  maxStudents     Int?      @map("max_students")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedTutor OrganizationAdmin? @relation(fields: [assignedTutorId], references: [id])
+  students      CohortStudent[]
+  assignments   PracticeAssignment[]
+
+  @@index([organizationId])
+  @@map("cohorts")
+}
+
+model CohortStudent {
+  id         String              @id @default(uuid())
+  cohortId   String              @map("cohort_id")
+  userId     String              @map("user_id")
+  enrolledAt DateTime            @default(now()) @map("enrolled_at")
+  status     CohortStudentStatus @default(COHORT_ACTIVE)
+
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, userId])
+  @@index([userId])
+  @@map("cohort_students")
+}
+
+model PracticeAssignment {
+  id             String                 @id @default(uuid())
+  organizationId String                 @map("organization_id")
+  assignedById   String                 @map("assigned_by")
+  cohortId       String?                @map("cohort_id")
+  userId         String?                @map("user_id")
+  title          String                 @db.VarChar(255)
+  description    String?
+  practiceType   AssignmentPracticeType  @map("practice_type")
+  minSessions    Int                    @default(1) @map("min_sessions")
+  specificParts  Json?                  @map("specific_parts")
+  dueDate        DateTime?              @map("due_date")
+  isActive       Boolean                @default(true) @map("is_active")
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedBy   OrganizationAdmin @relation(fields: [assignedById], references: [id])
+  cohort       Cohort?           @relation(fields: [cohortId], references: [id])
+  targetUser   User?             @relation(fields: [userId], references: [id])
+  completions  AssignmentCompletion[]
+
+  @@index([organizationId])
+  @@map("practice_assignments")
+}
+
+model AssignmentCompletion {
+  id                String    @id @default(uuid())
+  assignmentId      String    @map("assignment_id")
+  userId            String    @map("user_id")
+  sessionsCompleted Int       @default(0) @map("sessions_completed")
+  averageScore      Decimal?  @map("average_score") @db.Decimal(3, 1)
+  completedAt       DateTime? @map("completed_at")
+
+  assignment PracticeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, userId])
+  @@map("assignment_completions")
+}
+
+model OrganizationInvoice {
+  id               String        @id @default(uuid())
+  organizationId   String        @map("organization_id")
+  invoiceNumber    String        @unique @map("invoice_number") @db.VarChar(100)
+  amount           Decimal       @db.Decimal(12, 2)
+  currency         String        @default("NGN") @db.VarChar(10)
+  status           InvoiceStatus @default(INVOICE_PENDING)
+  periodStart      DateTime      @map("period_start") @db.Date
+  periodEnd        DateTime      @map("period_end") @db.Date
+  dueDate          DateTime      @map("due_date") @db.Date
+  paidAt           DateTime?     @map("paid_at")
+  paymentReference String?       @map("payment_reference") @db.VarChar(255)
+  pdfUrl           String?       @map("pdf_url") @db.VarChar(500)
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("organization_invoices")
+}
+
+model OrganizationActivityLog {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  actorId        String?            @map("actor_id")
+  actorType      ActivityActorType? @map("actor_type")
+  action         String             @db.VarChar(100)
+  entityType     String?            @map("entity_type") @db.VarChar(100)
+  entityId       String?            @map("entity_id")
+  details        Json?
+  ipAddress      String?            @map("ip_address") @db.VarChar(50)
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("organization_activity_logs")
 }
