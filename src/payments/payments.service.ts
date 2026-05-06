@@ -30,6 +30,12 @@ interface RegionEntry {
 
 const REGION_CONFIG: Record<string, RegionEntry> = {
   NG: { provider: 'paystack', models: ['packs'], packTier: 'nigeria' },
+  IN: { provider: 'global', models: ['packs'], packTier: 'india' },
+  PK: { provider: 'global', models: ['packs'], packTier: 'india' },
+  BD: { provider: 'global', models: ['packs'], packTier: 'india' },
+  NP: { provider: 'global', models: ['packs'], packTier: 'india' },
+  LK: { provider: 'global', models: ['packs'], packTier: 'india' },
+  PH: { provider: 'global', models: ['packs'], packTier: 'india' },
   _default: { provider: 'global', models: ['subscriptions'] },
 };
 
@@ -75,10 +81,10 @@ export class PaymentsService {
     amountCents: number; credits?: number; drillValidityDays?: number;
   }>> = {
     india: {
-      starter:  { amountCents: 299,  credits: 25 },
-      standard: { amountCents: 999,  credits: 100, drillValidityDays: 45 },
-      pro:      { amountCents: 1999, credits: 250, drillValidityDays: 60 },
-      ultimate: { amountCents: 2999, credits: 500, drillValidityDays: 90 },
+      starter:  { amountCents: 199,  credits: 25 },
+      standard: { amountCents: 499,  credits: 100, drillValidityDays: 45 },
+      pro:      { amountCents: 1099, credits: 250, drillValidityDays: 60 },
+      ultimate: { amountCents: 1799, credits: 500, drillValidityDays: 90 },
     },
   };
 
