@@ -68,6 +68,12 @@ export class PaymentsController {
     );
   }
 
+  @Post('cancel')
+  @UseGuards(AuthGuard('jwt'))
+  async cancelSubscription(@CurrentUser() user: User) {
+    return this.paymentsService.cancelSubscription(user.id);
+  }
+
   // ==========================================
   // PAYSTACK ENDPOINTS
   // ==========================================

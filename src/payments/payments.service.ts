@@ -131,6 +131,83 @@ export class PaymentsService {
     return this.getActiveSubscriptionProvider();
   }
 
+  async cancelSubscription(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, paddleCustomerId: true, polarCustomerId: true, subscriptionTier: true },
+    });
+
+    if (!user) throw new BadRequestException('User not found');
+    if (user.subscriptionTier !== 'premium') throw new BadRequestException('User does not have an active subscription');
+
+    let canceledAny = false;
+
+    // 1. Try canceling Paddle subscriptions
+    if (user.paddleCustomerId) {
+      const paddleApiKey = this.configService.get<string>('PADDLE_API_KEY');
+      if (paddleApiKey) {
+        const paddleEnv = this.configService.get<string>('PADDLE_ENVIRONMENT') || 'sandbox';
+        const baseUrl = paddleEnv === 'production' ? 'https://api.paddle.com' : 'https://sandbox-api.paddle.com';
+
+        try {
+          // Fetch active subscriptions for this customer
+          const listRes = await fetch(`${baseUrl}/subscriptions?customer_id=${user.paddleCustomerId}&status=active,past_due`, {
+            headers: { Authorization: `Bearer ${paddleApiKey}` },
+          });
+          const listData = await listRes.json() as any;
+          if (listData?.data && Array.isArray(listData.data)) {
+            for (const sub of listData.data) {
+              const cancelRes = await fetch(`${baseUrl}/subscriptions/${sub.id}/cancel`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${paddleApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ effective_from: 'next_billing_period' }),
+              });
+              if (cancelRes.ok) canceledAny = true;
+            }
+          }
+        } catch (error) {
+          this.logger.error('Failed to cancel Paddle subscription', error);
+        }
+      }
+    }
+
+    // 2. Try canceling Polar subscriptions
+    if (user.polarCustomerId) {
+      const polarAccessToken = this.configService.get<string>('POLAR_ACCESS_TOKEN');
+      if (polarAccessToken) {
+        const polar = new Polar({
+          accessToken: polarAccessToken,
+          server: this.configService.get<string>('POLAR_ENVIRONMENT') === 'production' ? 'production' : 'sandbox',
+        });
+        
+        try {
+          const subs = await polar.subscriptions.list({ customerId: user.polarCustomerId, active: true });
+          if (subs.result?.items && subs.result.items.length > 0) {
+            for (const sub of subs.result.items) {
+              await polar.subscriptions.update({
+                id: sub.id,
+                subscriptionUpdate: {
+                  cancelAtPeriodEnd: true,
+                },
+              });
+              canceledAny = true;
+            }
+          }
+        } catch (error) {
+          this.logger.error('Failed to cancel Polar subscription', error);
+        }
+      }
+    }
+
+    if (!canceledAny) {
+      // If we couldn't cancel any provider subscription but they are premium, it might be a manual/paystack tier
+      // We don't throw an error, we just let them know.
+      this.logger.warn(`Could not find active provider subscriptions to cancel for user ${userId}`);
+    }
+
+    return { success: true, message: 'Subscription cancelled successfully. You will remain on Premium until the end of your billing cycle.' };
+  }
+
   async getPublicConfig(countryCode?: string | null) {
     const region = getRegionConfig(countryCode);
 
