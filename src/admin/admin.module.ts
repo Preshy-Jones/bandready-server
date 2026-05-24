@@ -6,8 +6,10 @@ import { AdminContentController } from './admin-content.controller';
 import { AdminPaymentsController } from './admin-payments.controller';
 import { AdminMailController } from './admin-mail.controller';
 import { AdminUsageController } from './admin-usage.controller';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
+  imports: [PaymentsModule],
   controllers: [
     AdminAnalyticsController,
     AdminUsersController,

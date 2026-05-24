@@ -1,13 +1,17 @@
-import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Post, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Controller('admin/users')
 @UseGuards(AuthGuard('jwt'), AdminGuard)
 export class AdminUsersController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
   @Get()
   async getUsers(
@@ -51,6 +55,11 @@ export class AdminUsersController {
   @Patch(':id')
   async updateUser(@Param('id') id: string, @Body() body: any) {
     return this.adminService.updateUser(id, body);
+  }
+
+  @Post(':id/cancel-subscription')
+  async cancelUserSubscription(@Param('id') id: string) {
+    return this.paymentsService.cancelSubscription(id);
   }
 
   @Delete(':id')
